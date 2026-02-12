@@ -1,12 +1,24 @@
 const User = require("../models/user");
 const bcrypt = require("bcrypt");
+const { UniqueConstraintError } = require("sequelize");
+const { registerUserSchema, updateUserSchema } = require("../helper/schema");
 
 // Create a new user
 exports.createUser = async (req, res) => {
   try {
-    const { name, username, password, phoneNo, email } = req.body;
+    const { error, value } = registerUserSchema.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
 
-    // Hash password before saving
+    if (error) {
+      return res.status(400).json({
+        errors: error.details.map((err) => err.message),
+      });
+    }
+
+    const { name, username, password, phoneNo, email } = value;
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await User.create({
@@ -17,20 +29,38 @@ exports.createUser = async (req, res) => {
       email,
     });
 
-    res.status(201).json(newUser);
+    const userResponse = newUser.toJSON();
+    delete userResponse.password;
+
+    res.status(201).json(userResponse);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error creating user", error: error.message });
+
+    // 🔹 Handle duplicate fields properly
+    if (error instanceof UniqueConstraintError) {
+      return res.status(400).json({
+        message: `${error.errors[0].path} already exists`,
+      });
+    }
+
+    res.status(500).json({
+      message: "Internal server error",
+    });
   }
 };
 
 // Get all users
 exports.getUsers = async (req, res) => {
   try {
-    const users = await User.findAll();
+    const users = await User.findAll({
+      order: [["createdAt", "DESC"]],
+      attributes: { exclude: ["password"] },
+    });
     res.json(users);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching users", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching users", error: error.message });
   }
 };
 
@@ -42,7 +72,9 @@ exports.getUserById = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching user", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching user", error: error.message });
   }
 };
 
@@ -50,26 +82,50 @@ exports.getUserById = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, username, password, phoneNo, email } = req.body;
 
-    const user = await User.findByPk(id);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    // 🔹 Validate request body
+    const { error, value } = updateUserSchema.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
 
-    // Hash new password if provided
-    const updatedData = {
-      name: name || user.name,
-      username: username || user.username,
-      phoneNo: phoneNo || user.phoneNo,
-      email: email || user.email,
-    };
-    if (password) {
-      updatedData.password = await bcrypt.hash(password, 10);
+    if (error) {
+      return res.status(400).json({
+        errors: error.details.map(err => err.message),
+      });
     }
 
-    await user.update(updatedData);
-    res.json(user);
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // 🔹 If password exists, hash it
+    if (value.password) {
+      value.password = await bcrypt.hash(value.password, 10);
+    }
+
+    // 🔹 Update only validated fields
+    await user.update(value);
+
+    // 🔹 Remove password from response
+    const userResponse = user.toJSON();
+    delete userResponse.password;
+
+    res.json(userResponse);
+
   } catch (error) {
-    res.status(500).json({ message: "Error updating user", error: error.message });
+    console.error(error);
+
+    if (error instanceof UniqueConstraintError) {
+      return res.status(400).json({
+        message: `${error.errors[0].path} already exists`,
+      });
+    }
+
+    res.status(500).json({
+      message: "Internal server error",
+    });
   }
 };
 
@@ -83,6 +139,8 @@ exports.deleteUser = async (req, res) => {
     await user.destroy();
     res.json({ message: "User deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Error deleting user", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error deleting user", error: error.message });
   }
 };
