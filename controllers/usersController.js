@@ -2,6 +2,7 @@ const User = require("../models/user");
 const bcrypt = require("bcrypt");
 const { UniqueConstraintError } = require("sequelize");
 const { registerUserSchema, updateUserSchema } = require("../helper/schema");
+const { generateToken } = require("../helper/jwt");
 
 // Create a new user
 exports.createUser = async (req, res) => {
@@ -142,5 +143,35 @@ exports.deleteUser = async (req, res) => {
     res
       .status(500)
       .json({ message: "Error deleting user", error: error.message });
+  }
+};
+
+exports.login = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    const user = await User.findOne({ where: { username } });
+    if (!user) return res.status(401).json({ message: "Invalid username or password" });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ message: "Invalid username or password" });
+
+ 
+    const token = generateToken({
+      id: user.id,
+      username: user.username,
+      role: user.role || "Admin",
+    });
+
+    const { password: _, ...userData } = user.toJSON();
+
+    res.json({
+      message: "Login successful",
+    //   user: userData,
+      token,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
