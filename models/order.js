@@ -1,4 +1,3 @@
-// models/order.model.js
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/database");
 const Customer = require("./customer");

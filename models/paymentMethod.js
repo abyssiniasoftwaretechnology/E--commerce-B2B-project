@@ -1,4 +1,3 @@
-// src/models/payment.model.js
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/database");
 
