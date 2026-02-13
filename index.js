@@ -3,6 +3,7 @@ const cors = require("cors");
 const { connectDB } = require("./config/database");
 const routes = require("./routes"); // your routes/index.js
 
+
 const app = express();
 
 app.use(cors());
@@ -14,6 +15,7 @@ app.get("/", (req, res) => res.json({ message: "Ecommerce API" }));
 // Mount all routes under "/api" (optional)
 app.use("/api", routes);  
 // Now "/api/users" → your user routes
+
 
 const start = async () => {
   try {

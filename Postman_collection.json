@@ -368,6 +368,436 @@
           }
         }
       ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"+251900000001\",\n  \"address\": \"Addis Ababa\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"]
+            }
+          }
+        },
+        {
+          "name": "Get All Customers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"]
+            }
+          }
+        },
+        {
+          "name": "Get Customer by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/customers/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Customer",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"name\": \"John Updated\", \"phone\": \"+251900000001\" }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Partial Update Customer (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"phone\": \"+251900000002\" }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Delete Customer",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/customers/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", ":id"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"items\": [\n    { \"itemId\": 1, \"quantity\": 5, \"unit\": \"kg\", \"price\": 50 }\n  ],\n  \"totalAmount\": 50,\n  \"status\": \"pending\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Get All Orders",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Get Order by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Order",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"status\": \"completed\" }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Partial Update Order (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"status\": \"shipped\" }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Delete Order",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/orders/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", ":id"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment Methods",
+      "item": [
+        {
+          "name": "Create Payment Method",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Credit Card\",\n  \"type\": \"card\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment-methods"]
+            }
+          }
+        },
+        {
+          "name": "Get All Payment Methods",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment-methods"]
+            }
+          }
+        },
+        {
+          "name": "Get Payment Method by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payment-methods/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment-methods", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Payment Method",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"isActive\": false }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment-methods/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment-methods", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Partial Update Payment Method (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"isActive\": true }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment-methods/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment-methods", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Delete Payment Method",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/payment-methods/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment-methods", ":id"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sales",
+      "item": [
+        {
+          "name": "Create Sale",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": 1,\n  \"itemId\": 1,\n  \"quantity\": 5,\n  \"unit\": \"kg\",\n  \"unitPrice\": 10,\n  \"totalPrice\": 50,\n  \"saleDate\": \"2026-02-13\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales"]
+            }
+          }
+        },
+        {
+          "name": "Get All Sales",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales"]
+            }
+          }
+        },
+        {
+          "name": "Get Sale by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sales/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Sale",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"quantity\": 6, \"totalPrice\": 60 }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sales/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Partial Update Sale (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"quantity\": 7 }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sales/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Delete Sale",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/sales/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales", ":id"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sales Requests",
+      "item": [
+        {
+          "name": "Create Sales Request",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"itemId\": 1,\n  \"requestedQuantity\": 10,\n  \"unit\": \"kg\",\n  \"requestStatus\": \"pending\",\n  \"requestDate\": \"2026-02-13\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sales-requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales-requests"]
+            }
+          }
+        },
+        {
+          "name": "Get All Sales Requests",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sales-requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales-requests"]
+            }
+          }
+        },
+        {
+          "name": "Get Sales Request by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sales-requests/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales-requests", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Sales Request",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"requestStatus\": \"approved\" }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sales-requests/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales-requests", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Partial Update Sales Request (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"requestStatus\": \"rejected\" }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sales-requests/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales-requests", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Delete Sales Request",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/sales-requests/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales-requests", ":id"]
+            }
+          }
+        }
+      ]
     }
   ]
 }
