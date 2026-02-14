@@ -37,10 +37,10 @@ const updateCustomerSchema = Joi.object({
   email: Joi.string().email().optional().allow("", null),
   type: Joi.string().valid("seller", "buyer").optional(),
   licenseNo: Joi.string().optional().allow("", null),
-  legalDoc: Joi.object().optional().allow(null),
   tin: Joi.string().optional().allow("", null),
-  status: Joi.string().valid("pending", "approved", "rejected").optional(),
-});
+  status: Joi.string().valid("pending", "approved", "rejected", "active").optional(),
+}).min(1); // 🔥 require at least one field
+
 
 module.exports = {
   registerUserSchema,

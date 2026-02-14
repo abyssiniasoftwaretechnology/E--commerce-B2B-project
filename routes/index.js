@@ -5,8 +5,8 @@ const router = express.Router();
 
 router.use("/customers", require("./customerRoutes"));
 router.use("/paymentMethods", require("./paymentMethodRoutes"));
-router.use("/salesRequests", require("./salesRequestRouter"));
-router.use("/orders", require("./orderRouter"));
+router.use("/salesRequests", require("./salesRequestRoutes"));
+router.use("/orders", require("./orderRoutes"));
 router.use("/sales", require("./salesRouter"));
 
 

@@ -1,7 +1,9 @@
-const Sales = require("../models/Sales");
-const Order = require("../models/order");
-const Customer = require("../models/customer");
-const Item = require("../models/item");
+// const Sales = require("../models/Sales");
+// const Order = require("../models/order");
+// const Customer = require("../models/customer");
+// const Item = require("../models/item");
+// const Post = require("../models/post");
+const { Sales, Order, Post, Item, Customer } = require("../models");
 
 /**
  * CREATE: Add a new Sale
@@ -92,7 +94,7 @@ exports.updateSale = async (req, res) => {
     const sale = await Sales.findByPk(id);
     if (!sale) return res.status(404).json({ message: "Sale not found" });
 
-    const { orderId, customerId, price, totalPrice, paidAmount, status, paymentStatus, deliveryStatus } = req.body;
+    const { orderId, customerId, price, totalPrice, paidAmount,  } = req.body;
 
     await sale.update({
       orderId: orderId ?? sale.orderId,
@@ -100,9 +102,9 @@ exports.updateSale = async (req, res) => {
       price: price ?? sale.price,
       totalPrice: totalPrice ?? sale.totalPrice,
       paidAmount: paidAmount ?? sale.paidAmount,
-      status: status ?? sale.status,
-      paymentStatus: paymentStatus ?? sale.paymentStatus,
-      deliveryStatus: deliveryStatus ?? sale.deliveryStatus,
+      // status: status ?? sale.status,
+      // paymentStatus: paymentStatus ?? sale.paymentStatus,
+      // deliveryStatus: deliveryStatus ?? sale.deliveryStatus,
     });
 
     return res.status(200).json(sale);
