@@ -49,14 +49,13 @@ const Item = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
-    featuredDuration: {
-      type: DataTypes.INTEGER,
+    featuredUntil: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
-
     status: {
-      type: DataTypes.ENUM("active", "inActive"),
-      defaultValue: "active",
+      type: DataTypes.ENUM("available", "unavailable"),
+      defaultValue: "available",
     },
   },
   {

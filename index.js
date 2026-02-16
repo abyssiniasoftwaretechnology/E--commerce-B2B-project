@@ -1,7 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const { connectDB } = require("./config/database");
-const routes = require("./routes"); // your routes/index.js
+const models = require("./models");
+const routes = require("./routes"); 
 
 const app = express();
 
@@ -18,6 +19,10 @@ app.use("/api", routes);
 const start = async () => {
   try {
     await connectDB();
+
+    await models.sequelize.sync({ alter: false });
+    console.log("✅ Database synced with alter:true");
+
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
   } catch (err) {
