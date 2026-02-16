@@ -1,18 +1,136 @@
 {
   "info": {
-    "name": "Ecommerce API - Local",
-    "_postman_id": "ecommerce-local-collection",
-    "description": "Collection for testing the Ecommerce API endpoints",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "name": "E--commerce B2B API",
+    "_postman_id": "ecommerce-b2b-api",
+    "description": "Automatically generated Postman collection for routes/controllers in the project",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
   },
   "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:3000",
-      "type": "string"
-    }
+    { "key": "baseUrl", "value": "http://localhost:3000/api" },
+    { "key": "token", "value": "" }
   ],
   "item": [
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Register Customer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"phoneNo\": \"0912345678\",\n  \"password\": \"secret\",\n  \"email\": \"john@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login Customer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"0912345678\",\n  \"password\": \"secret\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "login"]
+            }
+          }
+        },
+        {
+          "name": "Logout Customer (Auth)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/customers/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "logout"]
+            }
+          }
+        },
+        {
+          "name": "Get Customers (Auth)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"]
+            }
+          }
+        },
+        {
+          "name": "Get Customer by ID (Auth)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/customers/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Customer (Auth)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Delete Customer (Auth)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/customers/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Customer Status (Auth)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"active\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/customers/:id/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", ":id", "status"]
+            }
+          }
+        }
+      ]
+    },
     {
       "name": "Users",
       "item": [
@@ -23,7 +141,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Alice\",\n  \"username\": \"alice\",\n  \"password\": \"secret\",\n  \"phoneNo\": \"+251900000000\",\n  \"email\": \"alice@example.com\"\n}"
+              "raw": "{\n  \"name\": \"Admin\",\n  \"username\": \"admin\",\n  \"password\": \"pass123\",\n  \"email\": \"admin@example.com\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/users",
@@ -33,7 +151,7 @@
           }
         },
         {
-          "name": "Get All Users",
+          "name": "Get Users",
           "request": {
             "method": "GET",
             "url": {
@@ -59,7 +177,7 @@
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{ \"name\": \"Alice Updated\" }" },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"New Name\"\n}" },
             "url": {
               "raw": "{{baseUrl}}/users/:id",
               "host": ["{{baseUrl}}"],
@@ -88,7 +206,7 @@
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{ \"name\": \"Fruits\" }" },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Beverages\"\n}" },
             "url": {
               "raw": "{{baseUrl}}/categories",
               "host": ["{{baseUrl}}"],
@@ -123,7 +241,7 @@
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{ \"name\": \"Vegetables\" }" },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Food\"\n}" },
             "url": {
               "raw": "{{baseUrl}}/categories/:id",
               "host": ["{{baseUrl}}"],
@@ -154,7 +272,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{ \"name\": \"Citrus\", \"categoryId\": 1 }"
+              "raw": "{\n  \"name\": \"Soft Drinks\",\n  \"categoryId\": 1\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/subcategories",
@@ -190,10 +308,7 @@
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{ \"name\": \"Citrus Updated\" }"
-            },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated\"\n}" },
             "url": {
               "raw": "{{baseUrl}}/subcategories/:id",
               "host": ["{{baseUrl}}"],
@@ -224,7 +339,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Orange\",\n  \"description\": \"Fresh oranges\",\n  \"categoryId\": 1,\n  \"subCategoryId\": 1,\n  \"quantity\": 100,\n  \"minQuantity\": 5,\n  \"featured\": false,\n  \"featuredDuration\": null,\n  \"status\": \"active\"\n}"
+              "raw": "{\n  \"name\": \"Coca Cola\",\n  \"categoryId\": 1,\n  \"quantity\": 100,\n  \"minQuantity\": 10\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/items",
@@ -260,7 +375,10 @@
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{ \"name\": \"Orange Large\" }" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Item\"\n}"
+            },
             "url": {
               "raw": "{{baseUrl}}/items/:id",
               "host": ["{{baseUrl}}"],
@@ -285,27 +403,51 @@
       "name": "Posts",
       "item": [
         {
-          "name": "Create Post (multipart with images)",
+          "name": "Create Post (multipart/form-data)",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "images", "type": "file", "src": [] },
                 { "key": "itemId", "value": "1", "type": "text" },
                 {
                   "key": "pricing",
-                  "value": "[{\"unit\":\"kg\",\"price\":10}]",
+                  "value": "[ { \"price\": 100 } ]",
                   "type": "text"
                 },
-                { "key": "detail", "value": "Fresh batch", "type": "text" }
+                { "key": "detail", "value": "Sample post", "type": "text" },
+                { "key": "images", "type": "file" }
               ]
             },
             "url": {
               "raw": "{{baseUrl}}/posts",
               "host": ["{{baseUrl}}"],
               "path": ["posts"]
+            }
+          }
+        },
+        {
+          "name": "Update Post (multipart/form-data)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "itemId", "value": "1", "type": "text" },
+                {
+                  "key": "pricing",
+                  "value": "[ { \"price\": 120 } ]",
+                  "type": "text"
+                },
+                { "key": "images", "type": "file" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts", ":id"]
             }
           }
         },
@@ -332,38 +474,365 @@
           }
         },
         {
-          "name": "Update Post (multipart)",
+          "name": "Delete Post",
           "request": {
-            "method": "PUT",
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                { "key": "images", "type": "file", "src": [] },
-                { "key": "itemId", "value": "1", "type": "text" },
-                {
-                  "key": "pricing",
-                  "value": "[{\"unit\":\"kg\",\"price\":12}]",
-                  "type": "text"
-                },
-                { "key": "detail", "value": "Updated batch", "type": "text" },
-                { "key": "status", "value": "completed", "type": "text" }
-              ]
-            },
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
               "raw": "{{baseUrl}}/posts/:id",
               "host": ["{{baseUrl}}"],
               "path": ["posts", ":id"]
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "PaymentMethods",
+      "item": [
+        {
+          "name": "Create Payment Method",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bank Transfer\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/paymentMethods",
+              "host": ["{{baseUrl}}"],
+              "path": ["paymentMethods"]
+            }
+          }
         },
         {
-          "name": "Delete Post",
+          "name": "Get Payment Methods",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/paymentMethods",
+              "host": ["{{baseUrl}}"],
+              "path": ["paymentMethods"]
+            }
+          }
+        },
+        {
+          "name": "Get Payment Method by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/paymentMethods/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["paymentMethods", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Payment Method",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mobile Money\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/paymentMethods/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["paymentMethods", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Delete Payment Method",
           "request": {
             "method": "DELETE",
             "url": {
-              "raw": "{{baseUrl}}/posts/:id",
+              "raw": "{{baseUrl}}/paymentMethods/:id",
               "host": ["{{baseUrl}}"],
-              "path": ["posts", ":id"]
+              "path": ["paymentMethods", ":id"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "SalesRequests",
+      "item": [
+        {
+          "name": "Create Sales Request",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemId\": 1,\n  \"price\": 50,\n  \"quantity\": 10,\n  \"paymentMethodId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/salesRequests",
+              "host": ["{{baseUrl}}"],
+              "path": ["salesRequests"]
+            }
+          }
+        },
+        {
+          "name": "Get Sales Requests",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/salesRequests",
+              "host": ["{{baseUrl}}"],
+              "path": ["salesRequests"]
+            }
+          }
+        },
+        {
+          "name": "Get Sales Request by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/salesRequests/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["salesRequests", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Sales Request",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"price\": 60\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/salesRequests/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["salesRequests", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Sales Request Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/salesRequests/:id/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["salesRequests", ":id", "status"]
+            }
+          }
+        },
+        {
+          "name": "Delete Sales Request",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/salesRequests/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["salesRequests", ":id"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"postId\": 1,\n  \"quantity\": 2,\n  \"paymentMethodId\": 1,\n  \"offeredPrice\": 200\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Get All Orders",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Get Order by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Order",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 3\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/orders/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Order Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"confirmed\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/:id/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", ":id", "status"]
+            }
+          }
+        },
+        {
+          "name": "Delete Order",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/orders/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", ":id"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sales",
+      "item": [
+        {
+          "name": "Create Sale",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": 1,\n  \"price\": 200,\n  \"totalPrice\": 200\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales"]
+            }
+          }
+        },
+        {
+          "name": "Get Sales",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales"]
+            }
+          }
+        },
+        {
+          "name": "Get Sale by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sales/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Sale",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"paidAmount\": 50\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/sales/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales", ":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Sale Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sales/:id/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales", ":id", "status"]
+            }
+          }
+        },
+        {
+          "name": "Update Sale Payment Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentStatus\": \"paid\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sales/:id/payment-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales", ":id", "payment-status"]
+            }
+          }
+        },
+        {
+          "name": "Update Sale Delivery Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deliveryStatus\": \"shipped\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sales/:id/delivery-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales", ":id", "delivery-status"]
+            }
+          }
+        },
+        {
+          "name": "Delete Sale",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/sales/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["sales", ":id"]
             }
           }
         }

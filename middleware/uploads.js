@@ -18,12 +18,16 @@ const storage = multer.diskStorage({
 
 // Optional: file filter (images only)
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("image/")) {
+  if (
+    file.mimetype.startsWith("image/") || // allow images
+    file.mimetype === "application/pdf"   // allow PDFs
+  ) {
     cb(null, true);
   } else {
-    cb(new Error("Only image files are allowed"), false);
+    cb(new Error("Only image or PDF files are allowed"), false);
   }
 };
+
 
 // Maximum file size 5MB
 const upload = multer({
