@@ -53,6 +53,84 @@ exports.createSalesRequest = async (req, res) => {
   }
 };
 
+exports.getMySalesRequests = async (req, res) => {
+  try {
+    // Ensure the user is authenticated
+    if (!req.customer) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const salesRequests = await SalesRequest.findAll({
+      where: { customerId: req.customer.id },
+      attributes: {
+        exclude: ["updatedAt", "itemId", "paymentMethodId", "customerId"],
+      },
+      include: [
+        {
+          model: Item,
+          attributes: {
+            exclude: [
+              "createdAt",
+              "updatedAt",
+              "categoryId",
+              "subCategoryId",
+              "status",
+              "quantity",
+              "minQuantity",
+              "featured",
+              "featuredUntil",
+            ],
+          },
+          include: [
+            { model: Category, attributes: { exclude: ["createdAt", "updatedAt"] } },
+            { model: SubCategory, attributes: { exclude: ["createdAt", "updatedAt", "categoryId"] } },
+          ],
+        },
+        { model: PaymentMethod, attributes: { exclude: ["createdAt", "updatedAt"] } },
+        {
+          model: Customer,
+          attributes: {
+            exclude: [
+              "createdAt",
+              "updatedAt",
+              "email",
+              "password",
+              "tin",
+              "legalDoc",
+              "licenseNo",
+              "status",
+            ],
+          },
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    // Format images with BASE_URL
+    const formatted = salesRequests.map((sale) => {
+      const saleData = sale.toJSON();
+
+      let imagesArray = [];
+      if (Array.isArray(saleData.images)) {
+        imagesArray = saleData.images;
+      } else if (typeof saleData.images === "string") {
+        try {
+          imagesArray = JSON.parse(saleData.images);
+        } catch {
+          imagesArray = [];
+        }
+      }
+
+      return { ...saleData, images: imagesArray.map((img) => `${BASE_URL}${img}`) };
+    });
+
+    return res.status(200).json(formatted);
+  } catch (error) {
+    console.error("Get My SalesRequests Error:", error);
+    return res.status(500).json({ message: "Failed to fetch sales requests" });
+  }
+};
+
 exports.getAllSalesRequests = async (req, res) => {
   try {
     const salesRequests = await SalesRequest.findAll({
@@ -392,7 +470,7 @@ exports.deleteSalesRequest = async (req, res) => {
 
 exports.filterSalesRequests = async (req, res) => {
   try {
-    const { itemId, paymentMethodId, status, customerId } = req.query;
+    const { itemId, paymentMethodId, status, customerId, startDate, endDate } = req.query;
 
     // 1️⃣ Build dynamic where condition
     const whereCondition = {};
@@ -411,6 +489,21 @@ exports.filterSalesRequests = async (req, res) => {
 
     if (status) {
       whereCondition.status = status;
+    }
+
+    if (startDate || endDate) {
+      whereCondition.createdAt = {};
+
+      if (startDate) {
+        const [y, m, d] = startDate.split("-").map(Number);
+        whereCondition.createdAt[Op.gte] = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+      }
+
+      if (endDate) {
+        const [y, m, d] = endDate.split("-").map(Number);
+        // End of day in UTC
+        whereCondition.createdAt[Op.lte] = new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
+      }
     }
 
     // 2️⃣ Fetch filtered sales requests

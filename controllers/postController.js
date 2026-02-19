@@ -498,12 +498,24 @@ exports.getPostsByItem = async (req, res) => {
 
 exports.filterPosts = async (req, res) => {
   try {
-    const { itemId, status, categoryId, subCategoryId } = req.query;
+    const { itemId, status, categoryId, subCategoryId, startDate, endDate } = req.query;
 
     // 🔹 Post-level filter
     const postWhere = {};
     if (itemId) postWhere.itemId = itemId;
     if (status) postWhere.status = status;
+
+    if (startDate || endDate) {
+      postWhere.createdAt = {};
+      if (startDate) {
+        const [y, m, d] = startDate.split("-").map(Number);
+        postWhere.createdAt[Op.gte] = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+      }
+      if (endDate) {
+        const [y, m, d] = endDate.split("-").map(Number);
+        postWhere.createdAt[Op.lte] = new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
+      }
+    }
 
     // 🔹 Item-level filter (nested)
     const itemWhere = {};

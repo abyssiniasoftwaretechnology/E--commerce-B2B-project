@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const salesRequestController = require("../controllers/salesRequestController");
-const {customerAuth, userAuth} = require("../middleware/auth");
+const {customerAuth, userAuth, userOrCustomerAuth} = require("../middleware/auth");
 const upload = require("../middleware/uploads");
 
 router.post(
@@ -11,6 +11,7 @@ router.post(
   salesRequestController.createSalesRequest,
 );
 router.get("/filter", salesRequestController.filterSalesRequests);
+router.get("/my-sales-requests", customerAuth, salesRequestController.getMySalesRequests);
 router.get("/", userAuth, salesRequestController.getAllSalesRequests);
 router.get("/:id", salesRequestController.getSalesRequestById);
 router.put("/:id", upload.array("images", 5),customerAuth, salesRequestController.updateSalesRequest,);

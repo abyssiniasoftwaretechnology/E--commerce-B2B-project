@@ -1,5 +1,6 @@
 const { Sales, Order, Post, Item, Customer } = require("../models");
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
+const { Op } = require("sequelize");
 
 exports.createSale = async (req, res) => {
   try {
@@ -253,6 +254,8 @@ exports.filterSales = async (req, res) => {
       status,
       paymentStatus,
       deliveryStatus,
+      startDate,
+      endDate
     } = req.query;
 
     // 🔹 Build dynamic where condition
@@ -263,6 +266,18 @@ exports.filterSales = async (req, res) => {
     if (status) whereCondition.status = status;
     if (paymentStatus) whereCondition.paymentStatus = paymentStatus;
     if (deliveryStatus) whereCondition.deliveryStatus = deliveryStatus;
+
+    if (startDate || endDate) {
+      whereCondition.createdAt = {};
+      if (startDate) {
+        const [y, m, d] = startDate.split("-").map(Number);
+        whereCondition.createdAt[Op.gte] = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+      }
+      if (endDate) {
+        const [y, m, d] = endDate.split("-").map(Number);
+        whereCondition.createdAt[Op.lte] = new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
+      }
+    }
 
     const sales = await Sales.findAll({
       where: whereCondition,

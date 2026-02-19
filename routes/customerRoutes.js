@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const customerController = require("../controllers/customerController");
-// const authMiddleware = require("../middleware/auth");
 const {customerAuth, userAuth} = require("../middleware/auth");
 const upload = require("../middleware/uploads");
 // Public routes

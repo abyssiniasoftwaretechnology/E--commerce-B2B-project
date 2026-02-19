@@ -5,6 +5,7 @@ const Item = require("../models/item");
 const Category = require("../models/category");
 const SubCategory = require("../models/subCategory");
 const PaymentMethod = require("../models/paymentMethod");
+const { Op } = require("sequelize");
 
 
 exports.createOrder = async (req, res) => {
@@ -251,10 +252,22 @@ exports.deleteOrder = async (req, res) => {
   }
 };
 
+const parseDateUTC = (dateStr, endOfDay = false) => {
+  // Expect dateStr in 'YYYY-MM-DD' format
+  const [year, month, day] = dateStr.split("-").map(Number);
+
+  if (endOfDay) {
+    // Set to 23:59:59.999 UTC
+    return new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+  }
+  // Set to 00:00:00.000 UTC
+  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+};
+
 exports.getFilteredOrders = async (req, res) => {
   try {
     // Extract filter parameters from query string
-    const { customerId, postId, status } = req.query;
+    const { customerId, postId, status, startDate, endDate } = req.query;
 
     // Build dynamic where clause
     const whereClause = {};
@@ -262,9 +275,24 @@ exports.getFilteredOrders = async (req, res) => {
     if (postId) whereClause.postId = Number(postId);
     if (status) whereClause.status = status;
 
+    // Add date range filter if both startDate and endDate are provided
+    if (startDate && endDate) {
+      whereClause.createdAt = {
+        [Op.between]: [parseDateUTC(startDate), parseDateUTC(endDate, true)],
+      };
+    } else if (startDate) {
+      whereClause.createdAt = {
+        [Op.gte]: parseDateUTC(startDate),
+      };
+    } else if (endDate) {
+      whereClause.createdAt = {
+        [Op.lte]: parseDateUTC(endDate, true),
+      };
+    }
+
     const orders = await Order.findAll({
       where: whereClause,
-            include: [
+      include: [
         {
           model: Customer,
           attributes: {
