@@ -7,6 +7,7 @@ const fs = require("fs");
 const path = require("path");
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
+
 // Helper: delete old images from server
 const deleteImages = (images) => {
   if (!images) return;
@@ -597,4 +598,162 @@ exports.filterPosts = async (req, res) => {
     });
   }
 };
+
+const { Op, literal } = require("sequelize");
+
+exports.searchPosts = async (req, res) => {
+  try {
+    const {
+      name,
+      minPrice,
+      maxPrice,
+      categoryId,
+      subCategoryId,
+      paymentMethodId,
+    } = req.query;
+
+    const itemWhere = {};
+    let matchCountLiteral = null;
+
+    // ✅ Flexible multi-word search with match count
+    if (name) {
+      const words = name
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+      // OR condition for filtering
+      itemWhere[Op.or] = words.map((word) => ({
+        name: { [Op.like]: `%${word}%` },
+      }));
+
+      // For sorting: count how many words match
+      // MySQL: sum of matches using CASE
+      const cases = words
+        .map(
+          (word) => `CASE WHEN Item.name LIKE '%${word}%' THEN 1 ELSE 0 END`
+        )
+        .join(" + ");
+
+      matchCountLiteral = literal(`(${cases})`);
+    }
+
+    if (categoryId) {
+      itemWhere.categoryId = categoryId;
+    }
+
+    if (subCategoryId) {
+      itemWhere.subCategoryId = subCategoryId;
+    }
+
+    // Fetch posts with associated items
+    const posts = await Post.findAll({
+      attributes: { exclude: ["itemId", "updatedAt"] },
+      include: [
+        {
+          model: Item,
+          where: itemWhere,
+          attributes: {
+            exclude: [
+              "createdAt",
+              "updatedAt",
+              "categoryId",
+              "subCategoryId",
+              "status",
+              "minQuantity",
+              "featured",
+              "featuredUntil",
+            ],
+          },
+          include: [
+            { model: Category, attributes: { exclude: ["createdAt", "updatedAt"] } },
+            { model: SubCategory, attributes: { exclude: ["createdAt", "updatedAt", "categoryId"] } },
+          ],
+        },
+      ],
+      // ✅ Order by match count if available
+      order: matchCountLiteral
+        ? [[matchCountLiteral, "DESC"], ["createdAt", "DESC"]]
+        : [["createdAt", "DESC"]],
+    });
+
+    // Get active payment methods
+    const paymentMethods = await PaymentMethod.findAll({
+      where: { status: "active" },
+    });
+
+    const paymentMap = {};
+    paymentMethods.forEach((pm) => (paymentMap[pm.id] = pm.name));
+
+    // Format posts
+    const formattedPosts = posts
+      .map((post) => {
+        const data = post.toJSON();
+
+        if (typeof data.pricing === "string") {
+          try {
+            data.pricing = JSON.parse(data.pricing);
+          } catch {
+            data.pricing = [];
+          }
+        }
+
+        if (!Array.isArray(data.pricing)) data.pricing = [];
+
+        if (typeof data.images === "string") {
+          try {
+            data.images = JSON.parse(data.images);
+          } catch {
+            data.images = [];
+          }
+        }
+
+        if (Array.isArray(data.images)) {
+          data.images = data.images
+            .map((img) => {
+              if (!img) return null;
+              if (img.startsWith("http://") || img.startsWith("https://"))
+                return img;
+              return `${BASE_URL}/${img}`;
+            })
+            .filter(Boolean);
+        }
+
+        // Filter pricing by min/max/paymentMethod
+        let pricing = data.pricing;
+
+        if (minPrice) {
+          pricing = pricing.filter((p) => Number(p.value) >= Number(minPrice));
+        }
+
+        if (maxPrice) {
+          pricing = pricing.filter((p) => Number(p.value) <= Number(maxPrice));
+        }
+
+        if (paymentMethodId) {
+          pricing = pricing.filter((p) => p.paymentMethodId == paymentMethodId);
+        }
+
+        // Attach payment name
+        pricing = pricing.map((p) => ({
+          paymentMethodId: p.paymentMethodId,
+          name: paymentMap[p.paymentMethodId] || null,
+          value: p.value,
+        }));
+
+        data.pricing = pricing;
+
+        return data;
+      })
+      .filter((post) => post.pricing.length > 0);
+
+    res.json(formattedPosts);
+  } catch (error) {
+    res.status(500).json({
+      message: "Error searching posts",
+      error: error.message,
+    });
+  }
+};
+
 
