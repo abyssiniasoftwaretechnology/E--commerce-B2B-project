@@ -4,17 +4,26 @@ const {
   PaymentMethod,
   Category,
   SubCategory,
+  Customer,
 } = require("../models");
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 const { Op } = require("sequelize");
 
 exports.createSalesRequest = async (req, res) => {
   try {
-    const { itemId, price, quantity, paymentMethodId, unit } = req.body;
+    const { itemId, price, quantity, paymentMethodId, unit, customerId } =
+      req.body;
 
-    if (!itemId || !price || quantity === undefined || !paymentMethodId) {
+    if (
+      !itemId ||
+      !price ||
+      quantity === undefined ||
+      !paymentMethodId ||
+      !customerId
+    ) {
       return res.status(400).json({
-        message: "itemId, price, quantity, and paymentMethodId are required",
+        message:
+          "itemId, price, quantity, paymentMethodId, and customerId are required",
       });
     }
 
@@ -26,6 +35,7 @@ exports.createSalesRequest = async (req, res) => {
 
     const salesRequest = await SalesRequest.create({
       itemId,
+      customerId,
       price,
       quantity,
       paymentMethodId,
@@ -46,7 +56,9 @@ exports.createSalesRequest = async (req, res) => {
 exports.getAllSalesRequests = async (req, res) => {
   try {
     const salesRequests = await SalesRequest.findAll({
-      attributes: { exclude: ["updatedAt", "itemId", "paymentMethodId"] },
+      attributes: {
+        exclude: ["updatedAt", "itemId", "paymentMethodId", "customerId"],
+      },
       include: [
         {
           model: Item,
@@ -77,6 +89,22 @@ exports.getAllSalesRequests = async (req, res) => {
         {
           model: PaymentMethod,
           attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
+        {
+          model: Customer,
+          attributes: {
+            exclude: [
+              "createdAt",
+              "updatedAt",
+              "email",
+              "password",
+              "email",
+              "tin",
+              "legalDoc",
+              "licenseNo",
+              "status",
+            ],
+          },
         },
       ],
       order: [["createdAt", "DESC"]],
@@ -144,6 +172,22 @@ exports.getSalesRequestById = async (req, res) => {
           ],
         },
         {
+          model: Customer,
+          attributes: {
+            exclude: [
+              "createdAt",
+              "updatedAt",
+              "email",
+              "password",
+              "email",
+              "tin",
+              "legalDoc",
+              "licenseNo",
+              "status",
+            ],
+          },
+        },
+        {
           model: PaymentMethod,
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
@@ -181,14 +225,8 @@ exports.getSalesRequestById = async (req, res) => {
 exports.updateSalesRequest = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      itemId,
-      price,
-      quantity,
-      paymentMethodId,
-      unit,
-      removeImages,
-    } = req.body;
+    const { itemId, price, quantity, paymentMethodId, unit, removeImages } =
+      req.body;
 
     const salesRequest = await SalesRequest.findByPk(id);
     if (!salesRequest) {
@@ -222,15 +260,13 @@ exports.updateSalesRequest = async (req, res) => {
       }
 
       updatedImages = updatedImages.filter(
-        (img) => !imagesToRemove.includes(img)
+        (img) => !imagesToRemove.includes(img),
       );
     }
 
     // ✅ 3. Append new uploaded images (DO NOT REPLACE)
     if (req.files && req.files.length > 0) {
-      const newImages = req.files.map(
-        (file) => `/uploads/${file.filename}`
-      );
+      const newImages = req.files.map((file) => `/uploads/${file.filename}`);
 
       updatedImages = [...updatedImages, ...newImages];
     }
@@ -265,11 +301,20 @@ exports.updateSalesRequest = async (req, res) => {
             ],
           },
           include: [
-            { model: Category, attributes: { exclude: ["createdAt", "updatedAt"] } },
-            { model: SubCategory, attributes: { exclude: ["createdAt", "updatedAt", "categoryId"] } },
+            {
+              model: Category,
+              attributes: { exclude: ["createdAt", "updatedAt"] },
+            },
+            {
+              model: SubCategory,
+              attributes: { exclude: ["createdAt", "updatedAt", "categoryId"] },
+            },
           ],
         },
-        { model: PaymentMethod, attributes: { exclude: ["createdAt", "updatedAt"] } },
+        {
+          model: PaymentMethod,
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
       ],
     });
 
@@ -290,7 +335,6 @@ exports.updateSalesRequest = async (req, res) => {
     saleData.images = imagesArray.map((img) => `${BASE_URL}${img}`);
 
     return res.status(200).json(saleData);
-
   } catch (error) {
     console.error("Update SalesRequest Error:", error.message);
     return res.status(500).json({
@@ -348,7 +392,7 @@ exports.deleteSalesRequest = async (req, res) => {
 
 exports.filterSalesRequests = async (req, res) => {
   try {
-    const { itemId, paymentMethodId, status } = req.query;
+    const { itemId, paymentMethodId, status, customerId } = req.query;
 
     // 1️⃣ Build dynamic where condition
     const whereCondition = {};
@@ -361,6 +405,10 @@ exports.filterSalesRequests = async (req, res) => {
       whereCondition.paymentMethodId = paymentMethodId;
     }
 
+    if (customerId && req.customer && req.customer.type === "seller") {
+      whereCondition.customerId = customerId;
+    }
+
     if (status) {
       whereCondition.status = status;
     }
@@ -368,7 +416,9 @@ exports.filterSalesRequests = async (req, res) => {
     // 2️⃣ Fetch filtered sales requests
     const salesRequests = await SalesRequest.findAll({
       where: whereCondition,
-      attributes: { exclude: ["updatedAt", "itemId", "paymentMethodId"] },
+      attributes: {
+        exclude: ["updatedAt", "itemId", "paymentMethodId", "customerId"],
+      },
       include: [
         {
           model: Item,
@@ -386,11 +436,36 @@ exports.filterSalesRequests = async (req, res) => {
             ],
           },
           include: [
-            { model: Category, attributes: { exclude: ["createdAt", "updatedAt"] } },
-            { model: SubCategory, attributes: { exclude: ["createdAt", "updatedAt", "categoryId"] } },
+            {
+              model: Category,
+              attributes: { exclude: ["createdAt", "updatedAt"] },
+            },
+            {
+              model: SubCategory,
+              attributes: { exclude: ["createdAt", "updatedAt", "categoryId"] },
+            },
           ],
         },
-        { model: PaymentMethod, attributes: { exclude: ["createdAt", "updatedAt"] } },
+        {
+          model: Customer,
+          attributes: {
+            exclude: [
+              "createdAt",
+              "updatedAt",
+              "email",
+              "password",
+              "email",
+              "tin",
+              "legalDoc",
+              "licenseNo",
+              "status",
+            ],
+          },
+        },
+        {
+          model: PaymentMethod,
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -417,7 +492,6 @@ exports.filterSalesRequests = async (req, res) => {
     });
 
     return res.status(200).json(formattedData);
-
   } catch (error) {
     console.error("Filter SalesRequests Error:", error.message);
     return res.status(500).json({

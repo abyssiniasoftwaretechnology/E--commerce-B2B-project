@@ -2,8 +2,11 @@ const Customer = require("../models/customer");
 const bcrypt = require("bcryptjs");
 const { generateToken } = require("../config/jwt");
 const { UniqueConstraintError, Op } = require("sequelize");
-const { registerCustomerSchema, updateCustomerSchema } = require("../helper/schema");
-const upload = require("../middleware/uploads"); 
+const {
+  registerCustomerSchema,
+  updateCustomerSchema,
+} = require("../helper/schema");
+const upload = require("../middleware/uploads");
 const fs = require("fs");
 const path = require("path");
 
@@ -12,13 +15,15 @@ const path = require("path");
 exports.registerCustomer = async (req, res) => {
   try {
     // Multer files
-    const legalDocs = req.files ? req.files.map(f => f.filename) : [];
+    const legalDocs = req.files ? req.files.map((f) => f.filename) : [];
 
     // Validate input (without legalDocs)
     const { error, value } = registerCustomerSchema.validate(req.body);
     if (error) {
       // cleanup uploaded files on error
-      legalDocs.forEach(f => fs.unlinkSync(path.join(__dirname, "../uploads", f)));
+      legalDocs.forEach((f) =>
+        fs.unlinkSync(path.join(__dirname, "../uploads", f)),
+      );
       return res.status(400).json({ message: error.details[0].message });
     }
     const { name, phoneNo, password, type, email, licenseNo, tin } = value;
@@ -30,8 +35,12 @@ exports.registerCustomer = async (req, res) => {
       },
     });
     if (existingCustomer) {
-      legalDocs.forEach(f => fs.unlinkSync(path.join(__dirname, "../uploads", f)));
-      return res.status(409).json({ message: "Phone number or email already exists." });
+      legalDocs.forEach((f) =>
+        fs.unlinkSync(path.join(__dirname, "../uploads", f)),
+      );
+      return res
+        .status(409)
+        .json({ message: "Phone number or email already exists." });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -45,7 +54,7 @@ exports.registerCustomer = async (req, res) => {
       type,
       email,
       licenseNo,
-      legalDoc: legalDocs, 
+      legalDoc: legalDocs,
       tin,
       status,
     });
@@ -59,7 +68,9 @@ exports.registerCustomer = async (req, res) => {
     });
   } catch (err) {
     if (req.files) {
-      req.files.forEach(f => fs.unlinkSync(path.join(__dirname, "../uploads", f.filename)));
+      req.files.forEach((f) =>
+        fs.unlinkSync(path.join(__dirname, "../uploads", f.filename)),
+      );
     }
     if (err instanceof UniqueConstraintError) {
       return res.status(409).json({ message: "Duplicate field value exists." });
@@ -107,15 +118,18 @@ exports.loginCustomer = async (req, res) => {
       type: customer.type,
     });
 
-    // ✅ Only return token
-    return res.status(200).json({ token });
-
+    return res.status(200).json({
+      message: "Login successful",
+      customer: {
+        type: customer.type,
+      },
+      token,
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
   }
 };
-
 
 // ------------------- LOGOUT CUSTOMER -------------------
 exports.logoutCustomer = async (req, res) => {
@@ -151,10 +165,11 @@ exports.getCustomers = async (req, res) => {
 // ------------------- GET SINGLE CUSTOMER -------------------
 exports.getCustomerById = async (req, res) => {
   try {
-    const customer = await Customer.findByPk(req.params.id,{
+    const customer = await Customer.findByPk(req.params.id, {
       attributes: { exclude: ["password", "updatedAt"] },
     });
-    if (!customer) return res.status(404).json({ message: "Customer not found" });
+    if (!customer)
+      return res.status(404).json({ message: "Customer not found" });
     res.json(customer);
   } catch (err) {
     console.error(err);
@@ -168,29 +183,23 @@ exports.updateCustomer = async (req, res) => {
     const { error, value } = updateCustomerSchema.validate(req.body);
     if (error) {
       if (req.files) {
-        req.files.forEach(f =>
-          fs.unlinkSync(path.join(__dirname, "../uploads", f.filename))
+        req.files.forEach((f) =>
+          fs.unlinkSync(path.join(__dirname, "../uploads", f.filename)),
         );
       }
       return res.status(400).json({ message: error.details[0].message });
     }
 
     const customer = await Customer.findByPk(req.params.id);
-    if (!customer) return res.status(404).json({ message: "Customer not found" });
+    if (!customer)
+      return res.status(404).json({ message: "Customer not found" });
 
-    const {
-      name,
-      phoneNo,
-      password,
-      type,
-      email,
-      licenseNo,
-      tin,
-    } = value || {}; 
+    const { name, phoneNo, password, type, email, licenseNo, tin } =
+      value || {};
 
     // Handle multiple legal docs
     const legalDocs = req.files?.length
-      ? req.files.map(f => f.filename)
+      ? req.files.map((f) => f.filename)
       : customer.legalDoc;
 
     const updatedPassword = password
@@ -208,8 +217,8 @@ exports.updateCustomer = async (req, res) => {
       tin: tin ?? customer.tin,
     });
 
-    const customerData = customer.toJSON(); 
-    delete customerData.password; 
+    const customerData = customer.toJSON();
+    delete customerData.password;
 
     const updatedCustomer = customer.toJSON(); // convert to plain object
     delete updatedCustomer.password; // remove password field
@@ -218,12 +227,10 @@ exports.updateCustomer = async (req, res) => {
       message: "Customer updated successfully",
       customer: updatedCustomer,
     });
-
-
   } catch (err) {
     if (req.files) {
-      req.files.forEach(f =>
-        fs.unlinkSync(path.join(__dirname, "../uploads", f.filename))
+      req.files.forEach((f) =>
+        fs.unlinkSync(path.join(__dirname, "../uploads", f.filename)),
       );
     }
     console.error(err);
@@ -257,7 +264,6 @@ exports.updateCustomerStatus = async (req, res) => {
       });
     }
 
-  
     if (customer.status === status) {
       return res.status(400).json({
         message: `Customer is already ${status}`,
@@ -279,7 +285,6 @@ exports.updateCustomerStatus = async (req, res) => {
       message: "Customer status updated successfully",
       customer: customerData,
     });
-
   } catch (err) {
     console.error(err);
     return res.status(500).json({
@@ -287,7 +292,6 @@ exports.updateCustomerStatus = async (req, res) => {
     });
   }
 };
-
 
 // ------------------- DELETE CUSTOMER -------------------
 exports.deleteCustomer = async (req, res) => {
@@ -315,4 +319,3 @@ exports.deleteCustomer = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-

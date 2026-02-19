@@ -2,6 +2,7 @@ const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/database");
 const Item = require("./item");
 const PaymentMethod = require("./paymentMethod");
+const Customer = require("./customer");
 
 const salesRequest = sequelize.define(
   "salesRequest",
@@ -10,6 +11,15 @@ const salesRequest = sequelize.define(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+
+    customerId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: Customer,
+        key: "id",
+      },
     },
 
     itemId: {

@@ -31,6 +31,10 @@ Post.belongsTo(Item, { foreignKey: "itemId" });
 Post.hasMany(Order, { foreignKey: "postId" });
 Order.belongsTo(Post, { foreignKey: "postId" });
 
+//customer <> salesRequest
+Customer.hasMany(SalesRequest, { foreignKey: "customerId" });
+SalesRequest.belongsTo(Customer, { foreignKey: "customerId" });
+
 // Customer <> Order
 Customer.hasMany(Order, { foreignKey: "customerId" });
 Order.belongsTo(Customer, { foreignKey: "customerId" });
