@@ -1,11 +1,12 @@
 const Order = require("../models/order");
 const Customer = require("../models/customer");
 const Post = require("../models/post");
+const Item = require("../models/item");
+const Category = require("../models/category");
+const SubCategory = require("../models/subCategory");
 const PaymentMethod = require("../models/paymentMethod");
 
-/**
- * CREATE: Add a new Order
- */
+
 exports.createOrder = async (req, res) => {
   try {
     const {
@@ -26,7 +27,8 @@ exports.createOrder = async (req, res) => {
       !offeredPrice
     ) {
       return res.status(400).json({
-        message: "customerId, postId, quantity, paymentMethodId, and offeredPrice are required",
+        message:
+          "customerId, postId, quantity, paymentMethodId, and offeredPrice are required",
       });
     }
 
@@ -46,16 +48,37 @@ exports.createOrder = async (req, res) => {
   }
 };
 
-/**
- * READ: Get all orders
- */
 exports.getAllOrders = async (req, res) => {
   try {
     const orders = await Order.findAll({
+      attributes: {
+        exclude: ["paymentMethodId", "updatedAt", "postId", "customerId"],
+      },
       include: [
-        { model: Customer },
-        { model: Post },
-        { model: PaymentMethod },
+        {
+          model: Customer,
+          attributes: {
+            exclude: [
+              "phone",
+              "password",
+              "createdAt",
+              "updatedAt",
+              "tin",
+              "legalDoc",
+              "licenseNo",
+              "type",
+              "status",
+            ],
+          },
+        },
+        {
+          model: Post,
+          attributes: { exclude: ["updatedAt", "itemId", "pricing", "images"] },
+        },
+        {
+          model: PaymentMethod,
+          attributes: { exclude: ["createdAt", "updatedAt", "status"] },
+        },
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -66,17 +89,38 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
-/**
- * READ: Get a single order by ID
- */
 exports.getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
     const order = await Order.findByPk(id, {
+      attributes: {
+        exclude: ["paymentMethodId", "updatedAt", "postId", "customerId"],
+      },
       include: [
-        { model: Customer },
-        { model: Post },
-        { model: PaymentMethod },
+        {
+          model: Customer,
+          attributes: {
+            exclude: [
+              "phone",
+              "password",
+              "createdAt",
+              "updatedAt",
+              "tin",
+              "legalDoc",
+              "licenseNo",
+              "type",
+              "status",
+            ],
+          },
+        },
+        {
+          model: Post,
+          attributes: { exclude: ["updatedAt", "itemId", "pricing", "images"] },
+        },
+        {
+          model: PaymentMethod,
+          attributes: { exclude: ["createdAt", "updatedAt", "status"] },
+        },
       ],
     });
 
@@ -91,9 +135,6 @@ exports.getOrderById = async (req, res) => {
   }
 };
 
-/**
- * UPDATE: Full update of Order
- */
 exports.updateOrder = async (req, res) => {
   try {
     const { id } = req.params;
@@ -119,17 +160,53 @@ exports.updateOrder = async (req, res) => {
       offeredPrice: offeredPrice ?? order.offeredPrice,
       status: status ?? order.status,
     });
+    const updatedOrder = await Order.findByPk(id, {
+      attributes: { exclude: ["customerId", "postId", "paymentMethodId"] },
+      include: [
+        {
+          model: Customer,
+          attributes: {
+            exclude: [
+              "phone",
+              "password",
+              "createdAt",
+              "updatedAt",
+              "tin",
+              "legalDoc",
+              "licenseNo",
+              "type",
+              "status",
+            ],
+          },
+        },
+        {
+          model: Post,
+          attributes: { exclude: ["updatedAt", "itemId", "pricing", "images"] },
+          include: [
+            {
+              model: Item,
+              attributes: ["id", "name"],
+              include: [
+                { model: Category, attributes: ["id", "name"] },
+                { model: SubCategory, attributes: ["id", "name"] },
+              ],
+            },
+          ],
+        },
+        {
+          model: PaymentMethod,
+          attributes: ["id", "name", "status"],
+        },
+      ],
+    });
 
-    return res.status(200).json(order);
+    return res.status(200).json(updatedOrder);
   } catch (error) {
     console.error("Update Order Error:", error);
     return res.status(500).json({ message: "Failed to update order" });
   }
 };
 
-/**
- * PATCH: Update ONLY status
- */
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -157,9 +234,6 @@ exports.updateOrderStatus = async (req, res) => {
   }
 };
 
-/**
- * DELETE: Remove an order
- */
 exports.deleteOrder = async (req, res) => {
   try {
     const { id } = req.params;
@@ -190,10 +264,31 @@ exports.getFilteredOrders = async (req, res) => {
 
     const orders = await Order.findAll({
       where: whereClause,
-      include: [
-        { model: Customer },
-        { model: Post },
-        { model: PaymentMethod },
+            include: [
+        {
+          model: Customer,
+          attributes: {
+            exclude: [
+              "phone",
+              "password",
+              "createdAt",
+              "updatedAt",
+              "tin",
+              "legalDoc",
+              "licenseNo",
+              "type",
+              "status",
+            ],
+          },
+        },
+        {
+          model: Post,
+          attributes: { exclude: ["updatedAt", "itemId", "pricing", "images"] },
+        },
+        {
+          model: PaymentMethod,
+          attributes: { exclude: ["createdAt", "updatedAt", "status"] },
+        },
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -204,31 +299,3 @@ exports.getFilteredOrders = async (req, res) => {
     return res.status(500).json({ message: "Failed to fetch filtered orders" });
   }
 };
-
-exports.getFilteredOrders = async (req, res) => {
-  try {
-    const { customerId, postId, status } = req.query;
-
-    const whereClause = {};
-    if (customerId) whereClause.customerId = parseInt(customerId, 10);
-    if (postId) whereClause.postId = parseInt(postId, 10);
-    if (status) whereClause.status = status;
-
-    console.log("Filter:", whereClause); // 🔹 Debug line
-
-    const orders = await Order.findAll({
-      where: whereClause,
-      include: [Customer, Post, PaymentMethod],
-      order: [["createdAt", "DESC"]],
-    });
-
-    console.log("Found orders:", orders.length); // 🔹 Debug line
-
-    return res.status(200).json(orders); // always return array
-  } catch (error) {
-    console.error("Get Filtered Orders Error:", error);
-    return res.status(500).json({ message: "Failed to fetch filtered orders" });
-  }
-};
-
-

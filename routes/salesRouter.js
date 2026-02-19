@@ -4,6 +4,7 @@ const salesController = require("../controllers/salesController");
 
 
 router.post("/", salesController.createSale);
+router.get("/filter", salesController.filterSales);
 router.get("/", salesController.getAllSales);
 router.get("/:id", salesController.getSaleById);
 router.put("/:id", salesController.updateSale);

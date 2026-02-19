@@ -1,11 +1,12 @@
 const {
+  SalesRequest,
   Item,
   PaymentMethod,
-  SalesRequest,
   Category,
   SubCategory,
 } = require("../models");
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
+const { Op } = require("sequelize");
 
 exports.createSalesRequest = async (req, res) => {
   try {
@@ -342,5 +343,86 @@ exports.deleteSalesRequest = async (req, res) => {
   } catch (error) {
     console.error("Delete SalesRequest Error:", error);
     return res.status(500).json({ message: "Failed to delete sales request" });
+  }
+};
+
+exports.filterSalesRequests = async (req, res) => {
+  try {
+    const { itemId, paymentMethodId, status } = req.query;
+
+    // 1️⃣ Build dynamic where condition
+    const whereCondition = {};
+
+    if (itemId) {
+      whereCondition.itemId = itemId;
+    }
+
+    if (paymentMethodId) {
+      whereCondition.paymentMethodId = paymentMethodId;
+    }
+
+    if (status) {
+      whereCondition.status = status;
+    }
+
+    // 2️⃣ Fetch filtered sales requests
+    const salesRequests = await SalesRequest.findAll({
+      where: whereCondition,
+      attributes: { exclude: ["updatedAt", "itemId", "paymentMethodId"] },
+      include: [
+        {
+          model: Item,
+          attributes: {
+            exclude: [
+              "createdAt",
+              "updatedAt",
+              "categoryId",
+              "subCategoryId",
+              "status",
+              "quantity",
+              "minQuantity",
+              "featured",
+              "featuredUntil",
+            ],
+          },
+          include: [
+            { model: Category, attributes: { exclude: ["createdAt", "updatedAt"] } },
+            { model: SubCategory, attributes: { exclude: ["createdAt", "updatedAt", "categoryId"] } },
+          ],
+        },
+        { model: PaymentMethod, attributes: { exclude: ["createdAt", "updatedAt"] } },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    // 3️⃣ Format images with BASE_URL
+    const formattedData = salesRequests.map((sale) => {
+      const saleData = sale.toJSON();
+
+      let imagesArray = [];
+
+      if (Array.isArray(saleData.images)) {
+        imagesArray = saleData.images;
+      } else if (typeof saleData.images === "string") {
+        try {
+          imagesArray = JSON.parse(saleData.images);
+        } catch {
+          imagesArray = [];
+        }
+      }
+
+      saleData.images = imagesArray.map((img) => `${BASE_URL}${img}`);
+
+      return saleData;
+    });
+
+    return res.status(200).json(formattedData);
+
+  } catch (error) {
+    console.error("Filter SalesRequests Error:", error.message);
+    return res.status(500).json({
+      message: "Failed to filter sales requests",
+      error: error.message,
+    });
   }
 };

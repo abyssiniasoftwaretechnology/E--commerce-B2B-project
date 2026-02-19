@@ -6,12 +6,12 @@ const upload = require("../middleware/uploads");
 // CRUD routes with image upload
 router.post("/", upload.array("images", 10), postController.createPost);
 router.put("/:id", upload.array("images", 10), postController.updatePost);
-
+router.get("/filter", postController.filterPosts);
 router.get("/", postController.getPosts);
 router.get("/:id", postController.getPostById);
 router.delete("/:id", postController.deletePost);
 router.get("/item/:itemId", postController.getPostsByItem);
-// router.get("/search", postController.searchPosts);
+
 
 
 module.exports = router;

@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const { generateToken } = require("../config/jwt");
 const { UniqueConstraintError, Op } = require("sequelize");
 const { registerCustomerSchema, updateCustomerSchema } = require("../helper/schema");
-const upload = require("../middleware/uploads"); // multer middleware
+const upload = require("../middleware/uploads"); 
 const fs = require("fs");
 const path = require("path");
 
@@ -21,7 +21,6 @@ exports.registerCustomer = async (req, res) => {
       legalDocs.forEach(f => fs.unlinkSync(path.join(__dirname, "../uploads", f)));
       return res.status(400).json({ message: error.details[0].message });
     }
-
     const { name, phoneNo, password, type, email, licenseNo, tin } = value;
 
     // Check for duplicate phone/email
@@ -46,8 +45,7 @@ exports.registerCustomer = async (req, res) => {
       type,
       email,
       licenseNo,
-      legalDoc: legalDocs, // just store the array directly
- // store array as JSON
+      legalDoc: legalDocs, 
       tin,
       status,
     });
@@ -75,8 +73,11 @@ exports.registerCustomer = async (req, res) => {
 exports.loginCustomer = async (req, res) => {
   try {
     const { identifier, password } = req.body;
+
     if (!identifier || !password) {
-      return res.status(400).json({ message: "Identifier and password are required." });
+      return res.status(400).json({
+        message: "Identifier and password are required.",
+      });
     }
 
     // Find by phoneNo or email
@@ -86,23 +87,35 @@ exports.loginCustomer = async (req, res) => {
       },
     });
 
-    if (!customer) return res.status(401).json({ message: "Invalid credentials" });
+    if (!customer) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
-    // Only allow active customers
     if (customer.status !== "approved") {
-      return res.status(403).json({ message: "Your account is not active yet." });
+      return res.status(403).json({
+        message: "Your account is not active yet.",
+      });
     }
 
     const isMatch = await bcrypt.compare(password, customer.password);
-    if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
-    const token = generateToken({ id: customer.id, type: customer.type });
-    res.json({ message: "Login successful", customer, token });
+    const token = generateToken({
+      id: customer.id,
+      type: customer.type,
+    });
+
+    // ✅ Only return token
+    return res.status(200).json({ token });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // ------------------- LOGOUT CUSTOMER -------------------
 exports.logoutCustomer = async (req, res) => {
@@ -120,6 +133,7 @@ exports.getCustomers = async (req, res) => {
       limit,
       offset,
       order: [["createdAt", "DESC"]],
+      attributes: { exclude: ["password", "updatedAt"] },
     });
 
     res.json({
@@ -137,7 +151,9 @@ exports.getCustomers = async (req, res) => {
 // ------------------- GET SINGLE CUSTOMER -------------------
 exports.getCustomerById = async (req, res) => {
   try {
-    const customer = await Customer.findByPk(req.params.id);
+    const customer = await Customer.findByPk(req.params.id,{
+      attributes: { exclude: ["password", "updatedAt"] },
+    });
     if (!customer) return res.status(404).json({ message: "Customer not found" });
     res.json(customer);
   } catch (err) {
@@ -170,8 +186,7 @@ exports.updateCustomer = async (req, res) => {
       email,
       licenseNo,
       tin,
-      
-    } = value || {}; // 🔥 PREVENT crash
+    } = value || {}; 
 
     // Handle multiple legal docs
     const legalDocs = req.files?.length
@@ -191,13 +206,20 @@ exports.updateCustomer = async (req, res) => {
       licenseNo: licenseNo ?? customer.licenseNo,
       legalDoc: legalDocs,
       tin: tin ?? customer.tin,
-      
     });
+
+    const customerData = customer.toJSON(); 
+    delete customerData.password; 
+
+    const updatedCustomer = customer.toJSON(); // convert to plain object
+    delete updatedCustomer.password; // remove password field
 
     res.json({
       message: "Customer updated successfully",
-      customer,
+      customer: updatedCustomer,
     });
+
+
   } catch (err) {
     if (req.files) {
       req.files.forEach(f =>
@@ -213,27 +235,59 @@ exports.updateCustomer = async (req, res) => {
 exports.updateCustomerStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const allowedStatuses = ["pending", "approved", "rejected", "active"];
+
+    const allowedStatuses = ["pending", "approved", "rejected"];
 
     if (!status || !allowedStatuses.includes(status)) {
-      return res.status(400).json({ message: "Invalid status value" });
+      return res.status(400).json({
+        message: "Invalid status value",
+      });
     }
 
     const customer = await Customer.findByPk(req.params.id);
-    if (!customer) return res.status(404).json({ message: "Customer not found" });
+    if (!customer) {
+      return res.status(404).json({
+        message: "Customer not found",
+      });
+    }
 
-    // Only seller status can be updated
     if (customer.type !== "seller") {
-      return res.status(403).json({ message: "Status update allowed only for sellers" });
+      return res.status(403).json({
+        message: "Status update allowed only for sellers",
+      });
+    }
+
+  
+    if (customer.status === status) {
+      return res.status(400).json({
+        message: `Customer is already ${status}`,
+      });
+    }
+
+    if (customer.status === "approved" && status === "pending") {
+      return res.status(400).json({
+        message: "Cannot revert approved customer back to pending",
+      });
     }
 
     await customer.update({ status });
-    res.json({ message: "Customer status updated successfully", customer });
+
+    const customerData = customer.toJSON();
+    delete customerData.password;
+
+    return res.json({
+      message: "Customer status updated successfully",
+      customer: customerData,
+    });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({
+      message: "Server error",
+    });
   }
 };
+
 
 // ------------------- DELETE CUSTOMER -------------------
 exports.deleteCustomer = async (req, res) => {

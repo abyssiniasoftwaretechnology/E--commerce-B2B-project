@@ -51,8 +51,8 @@ const Sales = sequelize.define(
     },
 
     paymentStatus: {
-      type: DataTypes.ENUM("unpaid", "partial", "paid"),
-      defaultValue: "unpaid",
+      type: DataTypes.ENUM("pending", "partial", "paid"),
+      defaultValue: "pending",
     },
 
     deliveryStatus: {

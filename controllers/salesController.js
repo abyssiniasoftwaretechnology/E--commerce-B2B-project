@@ -1,44 +1,35 @@
-// const Sales = require("../models/Sales");
-// const Order = require("../models/order");
-// const Customer = require("../models/customer");
-// const Item = require("../models/item");
-// const Post = require("../models/post");
 const { Sales, Order, Post, Item, Customer } = require("../models");
+const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
-/**
- * CREATE: Add a new Sale
- */
 exports.createSale = async (req, res) => {
   try {
-    const { orderId, customerId, price, totalPrice, paidAmount, status, paymentStatus, deliveryStatus } = req.body;
+    const { orderId, price, totalPrice } = req.body;
 
     if (!orderId || !price || !totalPrice) {
-      return res.status(400).json({
-        message: "orderId, price, and totalPrice are required",
-      });
+      return res.status(400).json({ message: "Order ID, price and total price are required" });
     }
 
     const sale = await Sales.create({
       orderId,
-      customerId,
       price,
       totalPrice,
-      paidAmount: paidAmount ?? 0,
-      status: status ?? "pending",
-      paymentStatus: paymentStatus ?? "unpaid",
-      deliveryStatus: deliveryStatus ?? "pending",
+      paidAmount: req.body.paidAmount ?? 0,
+      status: req.body.status ?? "pending",
+      paymentStatus: req.body.paymentStatus ?? "pending",
+      deliveryStatus: req.body.deliveryStatus ?? "pending",
     });
 
-    return res.status(201).json(sale);
+    return res.status(201).json(sale.toJSON()); // ✅ clean object
+
   } catch (error) {
-    console.error("Create Sale Error:", error);
-    return res.status(500).json({ message: "Failed to create sale" });
+    if (error.name === "SequelizeForeignKeyConstraintError") {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    return res.status(500).json({ message: "Something went wrong" });
   }
 };
 
-/**
- * READ: Get all Sales
- */
 exports.getAllSales = async (req, res) => {
   try {
     const sales = await Sales.findAll({
@@ -68,25 +59,34 @@ exports.getAllSales = async (req, res) => {
     });
 
     // 🔥 Transform data here
-    const formattedSales = sales.map(sale => {
-      const saleJSON = sale.toJSON();
+   const formattedSales = sales.map(sale => {
+    const saleJSON = sale.toJSON();
 
-      if (saleJSON.Order?.Post) {
-        // Parse images
-        if (saleJSON.Order.Post.images) {
-          saleJSON.Order.Post.images = JSON.parse(saleJSON.Order.Post.images)
-            .map(img => `${process.env.BASE_URL}/uploads/${img}`);
-        }
+    // Convert decimals to numbers
+    saleJSON.price = Number(saleJSON.price);
+    saleJSON.totalPrice = Number(saleJSON.totalPrice);
+    saleJSON.paidAmount = Number(saleJSON.paidAmount);
 
-        // Parse pricing
-        if (saleJSON.Order.Post.pricing) {
-          saleJSON.Order.Post.pricing = JSON.parse(saleJSON.Order.Post.pricing);
-        }
+    if (saleJSON.Order?.offeredPrice) {
+      saleJSON.Order.offeredPrice = Number(saleJSON.Order.offeredPrice);
+    }
+
+    if (saleJSON.Order?.Post) {
+
+      // Parse images safely
+      if (saleJSON.Order.Post.images) {
+        saleJSON.Order.Post.images = JSON.parse(saleJSON.Order.Post.images)
+          .map(img => img.startsWith("http") ? img : `${BASE_URL}/${img}`);
       }
 
-      return saleJSON;
-    });
+      // Parse pricing JSON
+      if (saleJSON.Order.Post.pricing) {
+        saleJSON.Order.Post.pricing = JSON.parse(saleJSON.Order.Post.pricing);
+      }
+    }
 
+    return saleJSON;
+  });
     return res.status(200).json(formattedSales);
 
   } catch (err) {
@@ -95,10 +95,6 @@ exports.getAllSales = async (req, res) => {
   }
 };
 
-
-/**
- * READ: Get a single Sale by ID
- */
 exports.getSaleById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -120,9 +116,6 @@ exports.getSaleById = async (req, res) => {
   }
 };
 
-/**
- * UPDATE: Full update of Sale
- */
 exports.updateSale = async (req, res) => {
   try {
     const { id } = req.params;
@@ -149,10 +142,6 @@ exports.updateSale = async (req, res) => {
   }
 };
 
-/**
- * PATCH: Update status
- * If status is 'sold', subtract quantity from associated item
- */
 exports.updateSaleStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -198,9 +187,6 @@ exports.updateSaleStatus = async (req, res) => {
   }
 };
 
-/**
- * PATCH: Update paymentStatus only
- */
 exports.updateSalePaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -223,9 +209,6 @@ exports.updateSalePaymentStatus = async (req, res) => {
   }
 };
 
-/**
- * PATCH: Update deliveryStatus only
- */
 exports.updateSaleDeliveryStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -248,9 +231,6 @@ exports.updateSaleDeliveryStatus = async (req, res) => {
   }
 };
 
-/**
- * DELETE: Remove a sale
- */
 exports.deleteSale = async (req, res) => {
   try {
     const { id } = req.params;
@@ -265,94 +245,108 @@ exports.deleteSale = async (req, res) => {
   }
 };
 
-// exports.getFilteredSales = async (req, res) => {
-//   try {
-//     const {
-//       orderId,
-//       customerId,
-//       status,
-//       paymentStatus,
-//       deliveryStatus,
-//     } = req.query;
+exports.filterSales = async (req, res) => {
+  try {
+    const {
+      orderId,
+      customerId,
+      status,
+      paymentStatus,
+      deliveryStatus,
+    } = req.query;
 
-//     const whereClause = {};
+    // 🔹 Build dynamic where condition
+    const whereCondition = {};
 
-//     if (orderId) whereClause.orderId = Number(orderId);
-//     if (customerId) whereClause.customerId = Number(customerId);
-//     if (status) whereClause.status = status;
-//     if (paymentStatus) whereClause.paymentStatus = paymentStatus;
-//     if (deliveryStatus) whereClause.deliveryStatus = deliveryStatus;
+    if (orderId) whereCondition.orderId = orderId;
+    if (customerId) whereCondition.customerId = customerId;
+    if (status) whereCondition.status = status;
+    if (paymentStatus) whereCondition.paymentStatus = paymentStatus;
+    if (deliveryStatus) whereCondition.deliveryStatus = deliveryStatus;
 
-//     const sales = await Sales.findAll({
-//       where: whereClause,
-//       attributes: [
-//         // "id",
-//         "price",
-//         "totalPrice",
-//         "paidAmount",
-//         "status",
-//         "paymentStatus",
-//         "deliveryStatus",
-//         "createdAt",
-//       ],
-//       include: [
-//         {
-//           model: Order,
-//           attributes: [
-//             "id",
-//             "quantity",
-//             "offeredPrice",
-//             "status",
-//           ],
-//           include: [
-//             {
-//               model: Post,
-//               attributes: [
-//                 "id",
-//                 "status",
-//                 "detail",
-//               ],
-//               include: [
-//                 {
-//                   model: Item,
-//                   attributes: [
-//                     "id",
-//                     "name",
-//                   ],
-//                 },
-//               ],
-//             },
-//             {
-//               model: Customer,
-//               attributes: [
-//                 "id",
-//                 "name",
-//                 "phoneNo",
-//                 "email",
-//               ], // password removed
-//               // attributes: { exclude: ["createdAt", "updatedAt", "password"] },
-//             },
-//           ],
-//         },
-//         {
-//           model: Customer,
-//           attributes: [
-//             "id",
-//             "name",
-//             "phoneNo",
-//           ],
-//         },
-//       ],
-//       order: [["createdAt", "DESC"]],
-//     });
+    const sales = await Sales.findAll({
+      where: whereCondition,
+      attributes: { exclude: ["updatedAt", "orderId"] },
+      include: [
+        {
+          model: Order,
+          attributes: {
+            exclude: ["updatedAt", "customerId", "postId", "paymentMethodId"],
+          },
+          include: [
+            {
+              model: Post,
+              attributes: { exclude: ["updatedAt", "itemId"] },
+              include: [Item],
+            },
+            {
+              model: Customer,
+              attributes: {
+                exclude: ["updatedAt", "password", "licenseNo", "legalDoc"],
+              },
+            },
+          ],
+        },
+        {
+          model: Customer,
+          attributes: {
+            exclude: ["updatedAt", "password", "licenseNo", "legalDoc"],
+          },
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
 
-//     return res.status(200).json(sales);
+    // 🔥 Transform data (same logic as yours)
+   const formattedSales = sales.map((sale) => {
+      const saleJSON = sale.toJSON();
 
-//   } catch (err) {
-//     console.error("Get Filtered Sales Error:", err);
-//     return res.status(500).json({ message: "Failed to fetch filtered sales" });
-//   }
-// };
+      if (saleJSON.Order?.Post) {
+        // ✅ Images
+        if (saleJSON.Order.Post.images) {
+          try {
+            const parsedImages =
+              typeof saleJSON.Order.Post.images === "string"
+                ? JSON.parse(saleJSON.Order.Post.images)
+                : saleJSON.Order.Post.images;
 
+            saleJSON.Order.Post.images = parsedImages.map((img) => {
+              if (!img) return null;
 
+              // Already full URL
+              if (img.startsWith("http://") || img.startsWith("https://")) {
+                return img;
+              }
 
+              // Add BASE_URL + /uploads safely
+              img = img.replace(/^\/+/, ""); // remove leading slashes
+              return `${BASE_URL}/uploads/${img}`;
+            }).filter(Boolean); // remove null/undefined
+          } catch {
+            saleJSON.Order.Post.images = [];
+          }
+        }
+
+        // ✅ Pricing
+        if (saleJSON.Order.Post.pricing) {
+          try {
+            saleJSON.Order.Post.pricing =
+              typeof saleJSON.Order.Post.pricing === "string"
+                ? JSON.parse(saleJSON.Order.Post.pricing)
+                : saleJSON.Order.Post.pricing;
+          } catch {
+            saleJSON.Order.Post.pricing = [];
+          }
+        }
+      }
+
+      return saleJSON;
+    });
+
+    return res.status(200).json(formattedSales);
+
+  } catch (err) {
+    console.error("Filter Sales Error:", err);
+    return res.status(500).json({ message: "Failed to filter sales" });
+  }
+};
