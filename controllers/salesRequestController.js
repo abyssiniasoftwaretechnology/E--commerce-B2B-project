@@ -1,8 +1,12 @@
-const { Item, PaymentMethod, SalesRequest } = require("../models");
+const {
+  Item,
+  PaymentMethod,
+  SalesRequest,
+  Category,
+  SubCategory,
+} = require("../models");
+const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
-/**
- * CREATE: Add a new sales request
- */
 exports.createSalesRequest = async (req, res) => {
   try {
     const { itemId, price, quantity, paymentMethodId, unit } = req.body;
@@ -24,63 +28,155 @@ exports.createSalesRequest = async (req, res) => {
       price,
       quantity,
       paymentMethodId,
-      unit: unit ?? "",
-      images, // now stores array of file paths
-      // status will default to "pending"
+      unit,
+      images,
     });
 
     return res.status(201).json(salesRequest);
   } catch (error) {
     console.error("Create SalesRequest Error:", error.message);
-    return res
-      .status(500)
-      .json({
-        message: "Failed to create sales request",
-        error: error.message,
-      });
+    return res.status(500).json({
+      message: "Failed to create sales request",
+      error: error.message,
+    });
   }
 };
 
-/**
- * READ: Get all sales requests
- */
 exports.getAllSalesRequests = async (req, res) => {
   try {
     const salesRequests = await SalesRequest.findAll({
-      include: [{ model: Item }, { model: PaymentMethod }],
+      attributes: { exclude: ["updatedAt", "itemId", "paymentMethodId"] },
+      include: [
+        {
+          model: Item,
+          attributes: {
+            exclude: [
+              "createdAt",
+              "updatedAt",
+              "categoryId",
+              "subCategoryId",
+              "status",
+              "quantity",
+              "minQuantity",
+              "featured",
+              "featuredUntil",
+            ],
+          },
+          include: [
+            {
+              model: Category,
+              attributes: { exclude: ["createdAt", "updatedAt"] },
+            },
+            {
+              model: SubCategory,
+              attributes: { exclude: ["createdAt", "updatedAt", "categoryId"] },
+            },
+          ],
+        },
+        {
+          model: PaymentMethod,
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
+      ],
       order: [["createdAt", "DESC"]],
     });
-    return res.status(200).json(salesRequests);
+
+    const formatted = salesRequests.map((sale) => {
+      const saleData = sale.toJSON();
+
+      // Ensure images is always an array
+      let imagesArray = [];
+      if (Array.isArray(saleData.images)) {
+        imagesArray = saleData.images;
+      } else if (typeof saleData.images === "string") {
+        try {
+          imagesArray = JSON.parse(saleData.images);
+        } catch (err) {
+          imagesArray = [];
+        }
+      }
+
+      return {
+        ...saleData,
+        images: imagesArray.map((img) => `${BASE_URL}${img}`),
+      };
+    });
+
+    return res.status(200).json(formatted);
   } catch (error) {
     console.error("Get All SalesRequests Error:", error);
     return res.status(500).json({ message: "Failed to fetch sales requests" });
   }
 };
 
-/**
- * READ: Get a single sales request by ID
- */
 exports.getSalesRequestById = async (req, res) => {
   try {
     const { id } = req.params;
     const salesRequest = await SalesRequest.findByPk(id, {
-      include: [{ model: Item }, { model: PaymentMethod }],
+      attributes: { exclude: ["updatedAt", "itemId", "paymentMethodId"] },
+      include: [
+        {
+          model: Item,
+          attributes: ["id", "name", "description", "images"],
+          attributes: {
+            exclude: [
+              "createdAt",
+              "updatedAt",
+              "categoryId",
+              "subCategoryId",
+              "status",
+              "quantity",
+              "minQuantity",
+              "featured",
+              "featuredUntil",
+            ],
+          },
+          include: [
+            {
+              model: Category,
+              attributes: { exclude: ["createdAt", "updatedAt"] },
+            },
+            {
+              model: SubCategory,
+              attributes: { exclude: ["createdAt", "updatedAt", "categoryId"] },
+            },
+          ],
+        },
+        {
+          model: PaymentMethod,
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
+      ],
     });
 
     if (!salesRequest) {
       return res.status(404).json({ message: "Sales request not found" });
     }
 
-    return res.status(200).json(salesRequest);
+    const saleData = salesRequest.toJSON();
+
+    // Ensure images is always an array
+    let imagesArray = [];
+    if (Array.isArray(saleData.images)) {
+      imagesArray = saleData.images;
+    } else if (typeof saleData.images === "string") {
+      try {
+        imagesArray = JSON.parse(saleData.images);
+      } catch (err) {
+        imagesArray = [];
+      }
+    }
+
+    // Prepend BASE_URL
+    saleData.images = imagesArray.map((img) => `${BASE_URL}${img}`);
+
+    return res.status(200).json(saleData);
   } catch (error) {
     console.error("Get SalesRequest Error:", error);
     return res.status(500).json({ message: "Failed to fetch sales request" });
   }
 };
 
-/**
- * UPDATE: Full update of sales request
- */
 exports.updateSalesRequest = async (req, res) => {
   try {
     const { id } = req.params;
@@ -90,6 +186,7 @@ exports.updateSalesRequest = async (req, res) => {
       quantity,
       paymentMethodId,
       unit,
+      removeImages,
     } = req.body;
 
     const salesRequest = await SalesRequest.findByPk(id);
@@ -97,16 +194,47 @@ exports.updateSalesRequest = async (req, res) => {
       return res.status(404).json({ message: "Sales request not found" });
     }
 
-    // Handle uploaded images if any
-    let updatedImages = salesRequest.images; // default to existing images
-    if (req.files && req.files.length > 0) {
-      // Map uploaded files to paths
-      const newImages = req.files.map(file => `/uploads/${file.filename}`);
-      // Optional: combine old and new images or replace
-      updatedImages = newImages; // replace existing images
+    // ✅ 1. Convert existing images to array safely
+    let updatedImages = [];
+
+    if (Array.isArray(salesRequest.images)) {
+      updatedImages = salesRequest.images;
+    } else if (typeof salesRequest.images === "string") {
+      try {
+        updatedImages = JSON.parse(salesRequest.images);
+      } catch {
+        updatedImages = [];
+      }
     }
 
-    // Update only fields provided in form-data
+    // ✅ 2. Remove images if provided
+    if (removeImages) {
+      let imagesToRemove = [];
+
+      try {
+        imagesToRemove =
+          typeof removeImages === "string"
+            ? JSON.parse(removeImages)
+            : removeImages;
+      } catch {
+        imagesToRemove = [];
+      }
+
+      updatedImages = updatedImages.filter(
+        (img) => !imagesToRemove.includes(img)
+      );
+    }
+
+    // ✅ 3. Append new uploaded images (DO NOT REPLACE)
+    if (req.files && req.files.length > 0) {
+      const newImages = req.files.map(
+        (file) => `/uploads/${file.filename}`
+      );
+
+      updatedImages = [...updatedImages, ...newImages];
+    }
+
+    // ✅ 4. Update DB
     await salesRequest.update({
       itemId: itemId ?? salesRequest.itemId,
       price: price ?? salesRequest.price,
@@ -114,20 +242,63 @@ exports.updateSalesRequest = async (req, res) => {
       paymentMethodId: paymentMethodId ?? salesRequest.paymentMethodId,
       unit: unit ?? salesRequest.unit,
       images: updatedImages,
-      // status is NOT updated
     });
 
-    return res.status(200).json(salesRequest);
+    // ✅ 5. Refetch (same as your working version)
+    const updatedSale = await SalesRequest.findByPk(id, {
+      attributes: { exclude: ["updatedAt", "itemId", "paymentMethodId"] },
+      include: [
+        {
+          model: Item,
+          attributes: {
+            exclude: [
+              "createdAt",
+              "updatedAt",
+              "categoryId",
+              "subCategoryId",
+              "status",
+              "quantity",
+              "minQuantity",
+              "featured",
+              "featuredUntil",
+            ],
+          },
+          include: [
+            { model: Category, attributes: { exclude: ["createdAt", "updatedAt"] } },
+            { model: SubCategory, attributes: { exclude: ["createdAt", "updatedAt", "categoryId"] } },
+          ],
+        },
+        { model: PaymentMethod, attributes: { exclude: ["createdAt", "updatedAt"] } },
+      ],
+    });
+
+    const saleData = updatedSale.toJSON();
+
+    // ✅ 6. Format images with BASE_URL (same as yours)
+    let imagesArray = [];
+    if (Array.isArray(saleData.images)) {
+      imagesArray = saleData.images;
+    } else if (typeof saleData.images === "string") {
+      try {
+        imagesArray = JSON.parse(saleData.images);
+      } catch {
+        imagesArray = [];
+      }
+    }
+
+    saleData.images = imagesArray.map((img) => `${BASE_URL}${img}`);
+
+    return res.status(200).json(saleData);
+
   } catch (error) {
     console.error("Update SalesRequest Error:", error.message);
-    return res.status(500).json({ message: "Failed to update sales request", error: error.message });
+    return res.status(500).json({
+      message: "Failed to update sales request",
+      error: error.message,
+    });
   }
 };
 
-
-/**
- * PATCH: Update ONLY the status
- */
 exports.updateSalesRequestStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -155,9 +326,6 @@ exports.updateSalesRequestStatus = async (req, res) => {
   }
 };
 
-/**
- * DELETE: Remove a sales request
- */
 exports.deleteSalesRequest = async (req, res) => {
   try {
     const { id } = req.params;

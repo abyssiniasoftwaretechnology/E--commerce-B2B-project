@@ -10,5 +10,8 @@ router.put("/:id", upload.array("images", 10), postController.updatePost);
 router.get("/", postController.getPosts);
 router.get("/:id", postController.getPostById);
 router.delete("/:id", postController.deletePost);
+router.get("/item/:itemId", postController.getPostsByItem);
+// router.get("/search", postController.searchPosts);
+
 
 module.exports = router;

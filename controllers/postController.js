@@ -6,10 +6,24 @@ const path = require("path");
 
 // Helper: delete old images from server
 const deleteImages = (images) => {
-  if (!images || images.length === 0) return;
+  if (!images) return;
+
+  // If it's a string, try parsing it
+  if (typeof images === "string") {
+    try {
+      images = JSON.parse(images);
+    } catch (err) {
+      return; // stop if invalid
+    }
+  }
+
+  if (!Array.isArray(images) || images.length === 0) return;
+
   images.forEach((img) => {
     const filePath = path.join(__dirname, "../uploads", img);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
   });
 };
 
@@ -177,32 +191,126 @@ exports.getPostById = async (req, res) => {
 exports.updatePost = async (req, res) => {
   try {
     const { id } = req.params;
-    const { itemId, pricing, detail, status } = req.body;
+    const {
+      removeImages,
+      addPricing,
+      removePricingIds,
+      updatePricing,
+      detail,
+      status,
+    } = req.body;
 
     const post = await Post.findByPk(id);
-    if (!post) return res.status(404).json({ message: "Post not found" });
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
 
-    // Update images: if new files uploaded, replace old ones
+    // -------------------------
+    // Ensure arrays (safe parsing)
+    // -------------------------
+    let images = Array.isArray(post.images)
+      ? post.images
+      : JSON.parse(post.images || "[]");
+
+    let pricing = Array.isArray(post.pricing)
+      ? post.pricing
+      : JSON.parse(post.pricing || "[]");
+
+    // =====================================================
+    // 🖼 REMOVE IMAGES
+    // =====================================================
+    if (removeImages) {
+      const toRemove = JSON.parse(removeImages);
+
+      images = images.filter((img) => !toRemove.includes(img));
+
+      deleteImages(toRemove);
+    }
+
+    // =====================================================
+    // 🖼 ADD NEW IMAGES
+    // =====================================================
     if (req.files && req.files.length > 0) {
-      deleteImages(post.images); // delete old files
-      post.images = req.files.map((f) => f.filename);
+      const newImages = req.files.map((f) => f.filename);
+      images = [...images, ...newImages];
     }
 
-    // Update other fields
-    if (itemId) {
-      const item = await Item.findByPk(itemId);
-      if (!item) return res.status(404).json({ message: "Item not found" });
-      post.itemId = itemId;
+    post.images = images;
+
+    // =====================================================
+    // 💰 REMOVE PRICING
+    // =====================================================
+    if (removePricingIds) {
+      const ids = JSON.parse(removePricingIds);
+
+      pricing = pricing.filter(
+        (p) => !ids.includes(p.paymentMethodId)
+      );
     }
 
-    if (pricing) post.pricing = JSON.parse(pricing);
+    // =====================================================
+    // 💰 UPDATE PRICING VALUE
+    // =====================================================
+    if (updatePricing) {
+      const updates = JSON.parse(updatePricing);
+
+      pricing = pricing.map((p) => {
+        const found = updates.find(
+          (u) => u.paymentMethodId === p.paymentMethodId
+        );
+        return found ? { ...p, value: found.value } : p;
+      });
+    }
+
+    // =====================================================
+    // 💰 ADD PRICING (NO DUPLICATES — STRONG VERSION)
+    // =====================================================
+    if (addPricing) {
+      const newPricing = JSON.parse(addPricing);
+
+      // Remove duplicates inside newPricing itself
+      const uniqueNewPricing = [];
+      const seen = new Set();
+
+      for (const p of newPricing) {
+        if (
+          p.paymentMethodId &&
+          p.value !== undefined &&
+          !isNaN(p.value) &&
+          !seen.has(p.paymentMethodId)
+        ) {
+          seen.add(p.paymentMethodId);
+          uniqueNewPricing.push(p);
+        }
+      }
+
+      // Prevent duplicates against existing pricing
+      const existingIds = pricing.map(p => p.paymentMethodId);
+
+      const filteredNewPricing = uniqueNewPricing.filter(
+        p => !existingIds.includes(p.paymentMethodId)
+      );
+
+      pricing = [...pricing, ...filteredNewPricing];
+    }
+
+    post.pricing = pricing;
+
+    // =====================================================
+    // Other fields
+    // =====================================================
     if (detail !== undefined) post.detail = detail;
     if (status) post.status = status;
 
     await post.save();
+
     res.json(post);
+
   } catch (error) {
-    res.status(500).json({ message: "Error updating post", error: error.message });
+    res.status(500).json({
+      message: "Error updating post",
+      error: error.message,
+    });
   }
 };
 
@@ -222,3 +330,51 @@ exports.deletePost = async (req, res) => {
     res.status(500).json({ message: "Error deleting post", error: error.message });
   }
 };
+
+const safeParse = (value) => {
+  try {
+    return value ? JSON.parse(value) : [];
+  } catch {
+    return [];
+  }
+};
+
+exports.getPostsByItem = async (req, res) => {
+  try {
+    const { itemId } = req.params;
+
+    const posts = await Post.findAll({
+      where: {
+        itemId,
+        // status: "post",
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    // 🔹 Normalize JSON fields
+    const formattedPosts = posts.map((post) => {
+      const postData = post.toJSON();
+
+      return {
+        ...postData,
+        pricing: Array.isArray(postData.pricing)
+          ? postData.pricing
+          : safeParse(postData.pricing),
+
+        images: Array.isArray(postData.images)
+          ? postData.images
+          : safeParse(postData.images),
+      };
+    });
+
+    res.json(formattedPosts);
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching posts by item",
+      error: error.message,
+    });
+  }
+};
+
+

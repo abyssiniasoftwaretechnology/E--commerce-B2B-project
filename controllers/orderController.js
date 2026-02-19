@@ -176,3 +176,59 @@ exports.deleteOrder = async (req, res) => {
     return res.status(500).json({ message: "Failed to delete order" });
   }
 };
+
+exports.getFilteredOrders = async (req, res) => {
+  try {
+    // Extract filter parameters from query string
+    const { customerId, postId, status } = req.query;
+
+    // Build dynamic where clause
+    const whereClause = {};
+    if (customerId) whereClause.customerId = Number(customerId);
+    if (postId) whereClause.postId = Number(postId);
+    if (status) whereClause.status = status;
+
+    const orders = await Order.findAll({
+      where: whereClause,
+      include: [
+        { model: Customer },
+        { model: Post },
+        { model: PaymentMethod },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    return res.status(200).json(orders);
+  } catch (error) {
+    console.error("Get Filtered Orders Error:", error);
+    return res.status(500).json({ message: "Failed to fetch filtered orders" });
+  }
+};
+
+exports.getFilteredOrders = async (req, res) => {
+  try {
+    const { customerId, postId, status } = req.query;
+
+    const whereClause = {};
+    if (customerId) whereClause.customerId = parseInt(customerId, 10);
+    if (postId) whereClause.postId = parseInt(postId, 10);
+    if (status) whereClause.status = status;
+
+    console.log("Filter:", whereClause); // 🔹 Debug line
+
+    const orders = await Order.findAll({
+      where: whereClause,
+      include: [Customer, Post, PaymentMethod],
+      order: [["createdAt", "DESC"]],
+    });
+
+    console.log("Found orders:", orders.length); // 🔹 Debug line
+
+    return res.status(200).json(orders); // always return array
+  } catch (error) {
+    console.error("Get Filtered Orders Error:", error);
+    return res.status(500).json({ message: "Failed to fetch filtered orders" });
+  }
+};
+
+

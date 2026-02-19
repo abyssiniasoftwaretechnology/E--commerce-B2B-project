@@ -42,24 +42,59 @@ exports.createSale = async (req, res) => {
 exports.getAllSales = async (req, res) => {
   try {
     const sales = await Sales.findAll({
+      attributes: { exclude: ["updatedAt", "orderId"] },
       include: [
         { 
           model: Order,
+          attributes: { exclude: ["updatedAt", "customerId", "postId", "paymentMethodId"] },
           include: [
-            { model: Post, include: [Item] },
-            { model: Customer },
+            { 
+              model: Post, 
+              attributes: { exclude: ["updatedAt", "itemId"] }, 
+              include: [Item] 
+            },
+            { 
+              model: Customer, 
+              attributes: { exclude: ["updatedAt", "password", "licenseNo","legalDoc"] } 
+            },
           ]
         },
-        { model: Customer }
+        { 
+          model: Customer, 
+          attributes: { exclude: ["updatedAt", "password", "licenseNo","legalDoc"] } 
+        },
       ],
       order: [["createdAt", "DESC"]],
     });
-    return res.status(200).json(sales);
+
+    // 🔥 Transform data here
+    const formattedSales = sales.map(sale => {
+      const saleJSON = sale.toJSON();
+
+      if (saleJSON.Order?.Post) {
+        // Parse images
+        if (saleJSON.Order.Post.images) {
+          saleJSON.Order.Post.images = JSON.parse(saleJSON.Order.Post.images)
+            .map(img => `${process.env.BASE_URL}/uploads/${img}`);
+        }
+
+        // Parse pricing
+        if (saleJSON.Order.Post.pricing) {
+          saleJSON.Order.Post.pricing = JSON.parse(saleJSON.Order.Post.pricing);
+        }
+      }
+
+      return saleJSON;
+    });
+
+    return res.status(200).json(formattedSales);
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Failed to fetch sales" });
   }
 };
+
 
 /**
  * READ: Get a single Sale by ID
@@ -229,3 +264,95 @@ exports.deleteSale = async (req, res) => {
     return res.status(500).json({ message: "Failed to delete sale" });
   }
 };
+
+// exports.getFilteredSales = async (req, res) => {
+//   try {
+//     const {
+//       orderId,
+//       customerId,
+//       status,
+//       paymentStatus,
+//       deliveryStatus,
+//     } = req.query;
+
+//     const whereClause = {};
+
+//     if (orderId) whereClause.orderId = Number(orderId);
+//     if (customerId) whereClause.customerId = Number(customerId);
+//     if (status) whereClause.status = status;
+//     if (paymentStatus) whereClause.paymentStatus = paymentStatus;
+//     if (deliveryStatus) whereClause.deliveryStatus = deliveryStatus;
+
+//     const sales = await Sales.findAll({
+//       where: whereClause,
+//       attributes: [
+//         // "id",
+//         "price",
+//         "totalPrice",
+//         "paidAmount",
+//         "status",
+//         "paymentStatus",
+//         "deliveryStatus",
+//         "createdAt",
+//       ],
+//       include: [
+//         {
+//           model: Order,
+//           attributes: [
+//             "id",
+//             "quantity",
+//             "offeredPrice",
+//             "status",
+//           ],
+//           include: [
+//             {
+//               model: Post,
+//               attributes: [
+//                 "id",
+//                 "status",
+//                 "detail",
+//               ],
+//               include: [
+//                 {
+//                   model: Item,
+//                   attributes: [
+//                     "id",
+//                     "name",
+//                   ],
+//                 },
+//               ],
+//             },
+//             {
+//               model: Customer,
+//               attributes: [
+//                 "id",
+//                 "name",
+//                 "phoneNo",
+//                 "email",
+//               ], // password removed
+//               // attributes: { exclude: ["createdAt", "updatedAt", "password"] },
+//             },
+//           ],
+//         },
+//         {
+//           model: Customer,
+//           attributes: [
+//             "id",
+//             "name",
+//             "phoneNo",
+//           ],
+//         },
+//       ],
+//       order: [["createdAt", "DESC"]],
+//     });
+
+//     return res.status(200).json(sales);
+
+//   } catch (err) {
+//     console.error("Get Filtered Sales Error:", err);
+//     return res.status(500).json({ message: "Failed to fetch filtered sales" });
+//   }
+// };
+
+
+
