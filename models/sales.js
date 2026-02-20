@@ -2,6 +2,7 @@ const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/database");
 const Order = require("./order");
 const Customer = require("./customer");
+const Item = require("./item");
 
 const Sales = sequelize.define(
   "Sales",
@@ -17,6 +18,15 @@ const Sales = sequelize.define(
       allowNull: true,
       references: {
         model: Order,
+        key: "id",
+      },
+    },
+
+    itemId: {
+     type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: Item,
         key: "id",
       },
     },

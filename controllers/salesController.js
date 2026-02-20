@@ -4,7 +4,7 @@ const { Op } = require("sequelize");
 
 exports.createSale = async (req, res) => {
   try {
-    const { orderId, customerId, price, totalPrice } = req.body;
+    const { orderId, customerId, itemId, price, totalPrice } = req.body;
 
     if (!price || !totalPrice) {
       return res.status(400).json({
@@ -14,6 +14,7 @@ exports.createSale = async (req, res) => {
 
     const sale = await Sales.create({
       orderId: orderId ?? null,
+      itemId: itemId ?? null,
       customerId: customerId ?? null,
       price,
       totalPrice,
@@ -25,15 +26,18 @@ exports.createSale = async (req, res) => {
 
     return res.status(201).json(sale);
   } catch (error) {
-    console.error(error); // 👈 VERY IMPORTANT for debugging
+    console.error(error);
 
     if (error.name === "SequelizeForeignKeyConstraintError") {
-      return res.status(404).json({ message: "Order or Customer not found" });
+      return res.status(404).json({
+        message: "Order, Customer or Item not found",
+      });
     }
 
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 exports.getAllSales = async (req, res) => {
   try {
@@ -59,6 +63,10 @@ exports.getAllSales = async (req, res) => {
           model: Customer, 
           attributes: { exclude: ["updatedAt", "password", "licenseNo","legalDoc"] } 
         },
+        {
+          model: Item,
+          attributes: ["id", "name"],
+        }
       ],
       order: [["createdAt", "DESC"]],
     });

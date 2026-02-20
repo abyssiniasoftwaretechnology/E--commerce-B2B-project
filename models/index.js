@@ -59,6 +59,10 @@ Sales.belongsTo(Order, { foreignKey: "orderId" });
 Customer.hasMany(Sales, { foreignKey: "customerId" });
 Sales.belongsTo(Customer, { foreignKey: "customerId" });
 
+//sales <> item
+Item.hasMany(Sales, { foreignKey: "itemId" });
+Sales.belongsTo(Item, { foreignKey: "itemId" });
+
 module.exports = {
   sequelize,
   Category,
