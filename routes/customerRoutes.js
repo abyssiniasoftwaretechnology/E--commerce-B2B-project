@@ -6,14 +6,14 @@ const upload = require("../middleware/uploads");
 // Public routes
 
 
-router.post("/register", upload.array("legalDocs", 5), customerController.registerCustomer);
+router.post("/register", upload.array("legalDoc", 5), customerController.registerCustomer);
 router.post("/login", customerController.loginCustomer);
 router.post("/logout", customerAuth, customerController.logoutCustomer);
 
 // Protected routes
-router.get("/", userAuth, customerController.getCustomers);
+router.get("/",  customerController.getCustomers);
 router.get("/:id", customerAuth, customerController.getCustomerById);
-router.put("/:id", upload.array("legalDocs", 5), customerController.updateCustomer);
+router.put("/:id", upload.array("legalDoc", 5), customerController.updateCustomer);
 router.delete("/:id", userAuth, customerController.deleteCustomer);
 router.patch("/:id/status", userAuth, customerController.updateCustomerStatus);
 module.exports = router;

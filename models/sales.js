@@ -14,7 +14,7 @@ const Sales = sequelize.define(
 
     orderId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: Order,
         key: "id",

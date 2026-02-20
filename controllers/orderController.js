@@ -7,7 +7,6 @@ const SubCategory = require("../models/subCategory");
 const PaymentMethod = require("../models/paymentMethod");
 const { Op } = require("sequelize");
 
-
 exports.createOrder = async (req, res) => {
   try {
     const {
@@ -49,6 +48,63 @@ exports.createOrder = async (req, res) => {
   }
 };
 
+exports.getMyOrders = async (req, res) => {
+  try {
+    if (!req.customer) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const orders = await Order.findAll({
+      where: { customerId: req.customer.id }, // ✅ important
+      attributes: {
+        exclude: ["paymentMethodId", "updatedAt", "postId", "customerId"],
+      },
+      include: [
+        {
+          model: Customer,
+          attributes: {
+            exclude: [
+              "phone",
+              "password",
+              "createdAt",
+              "updatedAt",
+              "tin",
+              "legalDoc",
+              "licenseNo",
+              "type",
+              "status",
+            ],
+          },
+        },
+        {
+          model: Post,
+          attributes: { exclude: ["updatedAt", "itemId", "pricing", "images"] },
+          include: [
+            {
+              model: Item,
+              attributes: ["id", "name"],
+              include: [
+                { model: Category, attributes: ["id", "name"] },
+                { model: SubCategory, attributes: ["id", "name"] },
+              ],
+            },
+          ],
+        },
+        {
+          model: PaymentMethod,
+          attributes: { exclude: ["createdAt", "updatedAt", "status"] },
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    return res.status(200).json(orders);
+  } catch (error) {
+    console.error("Get My Orders Error:", error);
+    return res.status(500).json({ message: "Failed to fetch orders" });
+  }
+};
+
 exports.getAllOrders = async (req, res) => {
   try {
     const orders = await Order.findAll({
@@ -75,6 +131,16 @@ exports.getAllOrders = async (req, res) => {
         {
           model: Post,
           attributes: { exclude: ["updatedAt", "itemId", "pricing", "images"] },
+          include: [
+            {
+              model: Item,
+              attributes: ["id", "name"],
+              include: [
+                { model: Category, attributes: ["id", "name"] },
+                { model: SubCategory, attributes: ["id", "name"] },
+              ],
+            },
+          ],
         },
         {
           model: PaymentMethod,
@@ -253,29 +319,30 @@ exports.deleteOrder = async (req, res) => {
 };
 
 const parseDateUTC = (dateStr, endOfDay = false) => {
-  // Expect dateStr in 'YYYY-MM-DD' format
   const [year, month, day] = dateStr.split("-").map(Number);
-
   if (endOfDay) {
-    // Set to 23:59:59.999 UTC
     return new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
   }
-  // Set to 00:00:00.000 UTC
   return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
 };
 
 exports.getFilteredOrders = async (req, res) => {
   try {
-    // Extract filter parameters from query string
-    const { customerId, postId, status, startDate, endDate } = req.query;
-
-    // Build dynamic where clause
+    const {
+      customerId,
+      postId,
+      status,
+      startDate,
+      endDate,
+      itemId,
+      categoryId,
+      subCategoryId,
+    } = req.query;
     const whereClause = {};
     if (customerId) whereClause.customerId = Number(customerId);
     if (postId) whereClause.postId = Number(postId);
     if (status) whereClause.status = status;
 
-    // Add date range filter if both startDate and endDate are provided
     if (startDate && endDate) {
       whereClause.createdAt = {
         [Op.between]: [parseDateUTC(startDate), parseDateUTC(endDate, true)],
@@ -289,6 +356,15 @@ exports.getFilteredOrders = async (req, res) => {
         [Op.lte]: parseDateUTC(endDate, true),
       };
     }
+
+    // 🔹 Post-level filtering
+    const postWhere = {};
+    if (itemId) postWhere.itemId = Number(itemId);
+
+    // 🔹 Item-level filtering
+    const itemWhere = {};
+    if (categoryId) itemWhere.categoryId = Number(categoryId);
+    if (subCategoryId) itemWhere.subCategoryId = Number(subCategoryId);
 
     const orders = await Order.findAll({
       where: whereClause,
@@ -311,7 +387,35 @@ exports.getFilteredOrders = async (req, res) => {
         },
         {
           model: Post,
+          required: !!itemId || !!categoryId || !!subCategoryId, // 🔥 FORCE INNER JOIN
+          where: itemId ? { itemId: Number(itemId) } : undefined,
           attributes: { exclude: ["updatedAt", "itemId", "pricing", "images"] },
+          include: [
+            {
+              model: Item,
+              required: !!categoryId || !!subCategoryId, // 🔥 FORCE INNER JOIN
+              attributes: ["id", "name"],
+              where:
+                categoryId || subCategoryId
+                  ? {
+                      ...(categoryId && { categoryId: Number(categoryId) }),
+                      ...(subCategoryId && {
+                        subCategoryId: Number(subCategoryId),
+                      }),
+                    }
+                  : undefined,
+              include: [
+                {
+                  model: Category,
+                  attributes: ["id", "name"],
+                },
+                {
+                  model: SubCategory,
+                  attributes: ["id", "name"],
+                },
+              ],
+            },
+          ],
         },
         {
           model: PaymentMethod,

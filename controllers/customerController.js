@@ -150,11 +150,37 @@ exports.getCustomers = async (req, res) => {
       attributes: { exclude: ["password", "updatedAt"] },
     });
 
+    const customers = rows.map((customer) => {
+      const data = customer.toJSON();
+
+      // Convert legalDoc to array with full URLs
+      if (data.legalDoc) {
+        let docs = [];
+
+        // If stored as JSON string
+        if (typeof data.legalDoc === "string" && data.legalDoc.startsWith("[")) {
+          docs = JSON.parse(data.legalDoc);
+        }
+        // If stored as comma-separated string
+        else if (typeof data.legalDoc === "string") {
+          docs = data.legalDoc.split(",");
+        }
+
+        data.legalDoc = docs.map(
+          (file) => `${process.env.BASE_URL}/uploads/${file.trim()}`
+        );
+      } else {
+        data.legalDoc = [];
+      }
+
+      return data;
+    });
+
     res.json({
       total: count,
       page,
       totalPages: Math.ceil(count / limit),
-      customers: rows,
+      customers,
     });
   } catch (err) {
     console.error(err);
@@ -162,20 +188,42 @@ exports.getCustomers = async (req, res) => {
   }
 };
 
+
 // ------------------- GET SINGLE CUSTOMER -------------------
 exports.getCustomerById = async (req, res) => {
   try {
     const customer = await Customer.findByPk(req.params.id, {
       attributes: { exclude: ["password", "updatedAt"] },
     });
+
     if (!customer)
       return res.status(404).json({ message: "Customer not found" });
-    res.json(customer);
+
+    const data = customer.toJSON();
+
+    if (data.legalDoc) {
+      let docs = [];
+
+      if (typeof data.legalDoc === "string" && data.legalDoc.startsWith("[")) {
+        docs = JSON.parse(data.legalDoc);
+      } else if (typeof data.legalDoc === "string") {
+        docs = data.legalDoc.split(",");
+      }
+
+      data.legalDoc = docs.map(
+        (file) => `${process.env.BASE_URL}/uploads/${file.trim()}`
+      );
+    } else {
+      data.legalDoc = [];
+    }
+
+    res.json(data);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // ------------------- UPDATE CUSTOMER -------------------
 exports.updateCustomer = async (req, res) => {

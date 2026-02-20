@@ -1,17 +1,20 @@
-const { Sales, Order, Post, Item, Customer } = require("../models");
+const { Sales, Order, Post, Item, Customer, Category, SubCategory } = require("../models");
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 const { Op } = require("sequelize");
 
 exports.createSale = async (req, res) => {
   try {
-    const { orderId, price, totalPrice } = req.body;
+    const { orderId, customerId, price, totalPrice } = req.body;
 
-    if (!orderId || !price || !totalPrice) {
-      return res.status(400).json({ message: "Order ID, price and total price are required" });
+    if (!price || !totalPrice) {
+      return res.status(400).json({
+        message: "price and totalPrice are required",
+      });
     }
 
     const sale = await Sales.create({
-      orderId,
+      orderId: orderId ?? null,
+      customerId: customerId ?? null,
       price,
       totalPrice,
       paidAmount: req.body.paidAmount ?? 0,
@@ -20,14 +23,15 @@ exports.createSale = async (req, res) => {
       deliveryStatus: req.body.deliveryStatus ?? "pending",
     });
 
-    return res.status(201).json(sale.toJSON()); // ✅ clean object
-
+    return res.status(201).json(sale);
   } catch (error) {
+    console.error(error); // 👈 VERY IMPORTANT for debugging
+
     if (error.name === "SequelizeForeignKeyConstraintError") {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: "Order or Customer not found" });
     }
 
-    return res.status(500).json({ message: "Something went wrong" });
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -255,7 +259,10 @@ exports.filterSales = async (req, res) => {
       paymentStatus,
       deliveryStatus,
       startDate,
-      endDate
+      endDate,
+        itemId,
+  categoryId,
+  subCategoryId
     } = req.query;
 
     // 🔹 Build dynamic where condition
@@ -279,26 +286,45 @@ exports.filterSales = async (req, res) => {
       }
     }
 
-    const sales = await Sales.findAll({
-      where: whereCondition,
-      attributes: { exclude: ["updatedAt", "orderId"] },
+  const sales = await Sales.findAll({
+  where: whereCondition,
+  attributes: { exclude: ["updatedAt", "orderId"] },
+  include: [
+    {
+      model: Order,
+      required: !!itemId || !!categoryId || !!subCategoryId,
+      attributes: {
+        exclude: ["updatedAt", "customerId", "postId", "paymentMethodId"],
+      },
       include: [
         {
-          model: Order,
-          attributes: {
-            exclude: ["updatedAt", "customerId", "postId", "paymentMethodId"],
-          },
+          model: Post,
+          required: !!itemId || !!categoryId || !!subCategoryId,
+          where: itemId ? { itemId: Number(itemId) } : undefined,
+          attributes: { exclude: ["updatedAt", "itemId"] },
           include: [
             {
-              model: Post,
-              attributes: { exclude: ["updatedAt", "itemId"] },
-              include: [Item],
-            },
-            {
-              model: Customer,
-              attributes: {
-                exclude: ["updatedAt", "password", "licenseNo", "legalDoc"],
-              },
+              model: Item,
+              required: !!categoryId || !!subCategoryId,
+              where:
+                categoryId || subCategoryId
+                  ? {
+                      ...(categoryId && { categoryId: Number(categoryId) }),
+                      ...(subCategoryId && {
+                        subCategoryId: Number(subCategoryId),
+                      }),
+                    }
+                  : undefined,
+              include: [
+                {
+                  model: Category,
+                  attributes: ["id", "name"],
+                },
+                {
+                  model: SubCategory,
+                  attributes: ["id", "name"],
+                },
+              ],
             },
           ],
         },
@@ -309,8 +335,17 @@ exports.filterSales = async (req, res) => {
           },
         },
       ],
-      order: [["createdAt", "DESC"]],
-    });
+    },
+    {
+      model: Customer,
+      attributes: {
+        exclude: ["updatedAt", "password", "licenseNo", "legalDoc"],
+      },
+    },
+  ],
+  order: [["createdAt", "DESC"]],
+});
+
 
     // 🔥 Transform data (same logic as yours)
    const formattedSales = sales.map((sale) => {

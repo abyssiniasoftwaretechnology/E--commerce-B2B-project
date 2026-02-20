@@ -15,5 +15,6 @@ router.put("/:id", upload.array("images", 10), postController.updatePost);
 
 router.delete("/:id", postController.deletePost);
 router.get("/item/:itemId", postController.getPostsByItem);
+router.post("/:id/increment", postController.incrementPostView);
 
 module.exports = router;

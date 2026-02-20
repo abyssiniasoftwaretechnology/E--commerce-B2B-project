@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 const { connectDB } = require("./config/database");
 const models = require("./models");
 const routes = require("./routes"); 
@@ -9,18 +10,22 @@ const path = require("path");
 
 const app = express();
 
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  })
+);
+
 app.use(cors());
 app.use(express.json());
 
 // Serve static files from the "uploads" directory
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Base route
 app.get("/", (req, res) => res.json({ message: "Ecommerce API" }));
 
-// Mount all routes under "/api" (optional)
 app.use("/api", routes);  
-// Now "/api/users" → your user routes
+
 
 
 const start = async () => {

@@ -164,7 +164,7 @@ exports.deleteItem = async (req, res) => {
   }
 };
 
-exports.getItems = async (req, res) => {
+exports.filterItems = async (req, res) => {
   try {
     const { status, categoryId, subCategoryId, featured } = req.query;
 
