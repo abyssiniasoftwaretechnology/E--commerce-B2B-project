@@ -1,8 +1,11 @@
 const { Sales, Order, Post, Item, Customer, Category, SubCategory } = require("../models");
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 const { Op } = require("sequelize");
+const {sequelize} = require("../config/database");
 
 exports.createSale = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
   try {
     const { orderId, customerId, itemId, price, totalPrice } = req.body;
 
@@ -12,20 +15,43 @@ exports.createSale = async (req, res) => {
       });
     }
 
-    const sale = await Sales.create({
-      orderId: orderId ?? null,
-      itemId: itemId ?? null,
-      customerId: customerId ?? null,
-      price,
-      totalPrice,
-      paidAmount: req.body.paidAmount ?? 0,
-      status: req.body.status ?? "pending",
-      paymentStatus: req.body.paymentStatus ?? "pending",
-      deliveryStatus: req.body.deliveryStatus ?? "pending",
-    });
+    const sale = await Sales.create(
+      {
+        orderId: orderId ?? null,
+        itemId: itemId ?? null,
+        customerId: customerId ?? null,
+        price,
+        totalPrice,
+        paidAmount: req.body.paidAmount ?? 0,
+        status: req.body.status ?? "pending",
+        paymentStatus: req.body.paymentStatus ?? "pending",
+        deliveryStatus: req.body.deliveryStatus ?? "pending",
+      },
+      { transaction }
+    );
+
+    // ✅ If orderId exists, update recorded field
+    if (orderId) {
+      const order = await Order.findByPk(orderId, { transaction });
+
+      if (!order) {
+        await transaction.rollback();
+        return res.status(404).json({
+          message: "Order not found",
+        });
+      }
+
+      await order.update(
+        { recorded: true },
+        { transaction }
+      );
+    }
+
+    await transaction.commit();
 
     return res.status(201).json(sale);
   } catch (error) {
+    await transaction.rollback();
     console.error(error);
 
     if (error.name === "SequelizeForeignKeyConstraintError") {

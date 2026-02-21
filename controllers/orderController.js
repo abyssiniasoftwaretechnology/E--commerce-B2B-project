@@ -15,7 +15,7 @@ exports.createOrder = async (req, res) => {
       quantity,
       paymentMethodId,
       offeredPrice,
-      status, // optional, but we will ignore on create
+      status, 
     } = req.body;
 
     // Validate required fields
@@ -38,7 +38,8 @@ exports.createOrder = async (req, res) => {
       quantity,
       paymentMethodId,
       offeredPrice,
-      status: undefined, // enforce default "pending"
+      status: undefined, 
+      recorded: false,
     });
 
     return res.status(201).json(order);
