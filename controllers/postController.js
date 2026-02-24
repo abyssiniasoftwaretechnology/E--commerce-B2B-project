@@ -8,28 +8,6 @@ const path = require("path");
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
 
-// Helper: delete old images from server
-const deleteImages = (images) => {
-  if (!images) return;
-
-  // If it's a string, try parsing it
-  if (typeof images === "string") {
-    try {
-      images = JSON.parse(images);
-    } catch (err) {
-      return; // stop if invalid
-    }
-  }
-
-  if (!Array.isArray(images) || images.length === 0) return;
-
-  images.forEach((img) => {
-    const filePath = path.join(__dirname, "../uploads", img);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-  });
-};
 
 exports.createPost = async (req, res) => {
   try {
@@ -292,145 +270,140 @@ exports.getPostById = async (req, res) => {
 exports.updatePost = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      removeImages,
-      addPricing,
-      removePricingIds,
-      updatePricing,
-      detail,
-      status,
-    } = req.body;
+    let { itemId, pricing, detail, status, existingImages } = req.body;
 
     const post = await Post.findByPk(id);
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    // -------------------------
-    // Safe parse stored arrays
-    // -------------------------
-    let images = Array.isArray(post.images)
-      ? post.images
-      : JSON.parse(post.images || "[]");
+    // =============================
+    // SAFE PARSE STORED DATA
+    // =============================
+    let images =
+      typeof post.images === "string"
+        ? JSON.parse(post.images || "[]")
+        : post.images || [];
 
-    let pricing = Array.isArray(post.pricing)
-      ? post.pricing
-      : JSON.parse(post.pricing || "[]");
+    let currentPricing =
+      typeof post.pricing === "string"
+        ? JSON.parse(post.pricing || "[]")
+        : post.pricing || [];
+
+    // =============================
+    // UPDATE ITEM
+    // =============================
+    if (itemId !== undefined) post.itemId = itemId;
 
     // =============================
     // REMOVE IMAGES
     // =============================
-    if (removeImages) {
-      const toRemove = JSON.parse(removeImages);
-      images = images.filter(img => !toRemove.includes(img));
-      deleteImages(toRemove);
+if (existingImages !== undefined) {
+  console.log("existingImages from frontend:", existingImages);
+
+  // Parse JSON string if needed
+  if (typeof existingImages === "string") {
+    try {
+      existingImages = JSON.parse(existingImages);
+    } catch (err) {
+      existingImages = [existingImages];
     }
+  }
+
+  if (!Array.isArray(existingImages)) {
+    existingImages = [existingImages];
+  }
+
+  // Normalize filenames to keep
+  const filenamesToKeep = existingImages.map((img) =>
+    img.split("/").pop()
+  );
+
+  console.log("Filenames to keep:", filenamesToKeep);
+
+  // Find removed images
+  const removedImages = images.filter((img) => {
+    const filename = img.split("/").pop();
+    return !filenamesToKeep.includes(filename);
+  });
+
+  console.log("Removed images:", removedImages);
+
+  // Remove from DB list
+  images = images.filter((img) => !removedImages.includes(img));
+
+  // Delete from disk
+  removedImages.forEach((img) => {
+    const filePath = path.join(__dirname, "../", img);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log("Deleted file:", filePath);
+    }
+  });
+}
 
     // =============================
     // ADD NEW IMAGES
     // =============================
     if (req.files && req.files.length > 0) {
       const postFolder = path.join(__dirname, "../uploads/post");
-      if (!fs.existsSync(postFolder))
-        fs.mkdirSync(postFolder, { recursive: true });
+      if (!fs.existsSync(postFolder)) fs.mkdirSync(postFolder, { recursive: true });
 
-      const newImages = req.files.map(file => {
-        const oldPath = file.path;
+      const newImages = req.files.map((file) => {
         const newPath = path.join(postFolder, file.filename);
-        fs.renameSync(oldPath, newPath);
+        fs.renameSync(file.path, newPath);
         return `uploads/post/${file.filename}`;
       });
-
-      images = [...images, ...newImages];
+      images.push(...newImages);
     }
 
-    // Store (still as array — Sequelize will stringify if TEXT)
-    post.images = images;
-    post.pricing = pricing;
+    // =============================
+    // SMART UPSERT PRICING
+    // =============================
+    if (pricing) {
+      if (typeof pricing === "string") {
+        try {
+          pricing = JSON.parse(pricing);
+        } catch (err) {
+          return res.status(400).json({ message: "Pricing must be valid JSON" });
+        }
+      }
+
+      if (Array.isArray(pricing)) {
+        pricing.forEach((newPrice) => {
+          const pmId = Number(newPrice.paymentMethodId);
+          const value = Number(newPrice.value);
+
+          const existingIndex = currentPricing.findIndex(
+            (p) => Number(p.paymentMethodId) === pmId
+          );
+
+          if (existingIndex !== -1) {
+            // Update existing
+            currentPricing[existingIndex].value = value;
+          } else {
+            // Add new
+            currentPricing.push({ paymentMethodId: pmId, value });
+          }
+        });
+      }
+    }
+
+    // =============================
+    // ASSIGN & FORCE UPDATE
+    // =============================
+    post.setDataValue("images", images);
+    post.setDataValue("pricing", currentPricing);
+    post.changed("images", true);
+    post.changed("pricing", true);
 
     if (detail !== undefined) post.detail = detail;
-    if (status) post.status = status;
+    if (status !== undefined) post.status = status;
 
     await post.save();
 
-    // =============================
-    // 🔥 RE-FETCH LIKE GET
-    // =============================
-    const updatedPost = await Post.findByPk(id, {
-      attributes: { exclude: ["itemId", "updatedAt"] },
-      include: [
-        {
-          model: Item,
-          attributes: {
-            exclude: [
-              "createdAt",
-              "updatedAt",
-              "categoryId",
-              "subCategoryId",
-              "status",
-              "minQuantity",
-              "featured",
-              "featuredUntil",
-            ],
-          },
-          include: [
-            {
-              model: Category,
-              attributes: { exclude: ["createdAt", "updatedAt"] },
-            },
-            {
-              model: SubCategory,
-              attributes: { exclude: ["createdAt", "updatedAt", "categoryId"] },
-            },
-          ],
-        },
-      ],
-    });
-
-    const data = updatedPost.toJSON();
-
-    // =============================
-    // 🔥 THIS FIXES YOUR ISSUE
-    // =============================
-    if (typeof data.images === "string") {
-      data.images = JSON.parse(data.images);
-    }
-
-    if (typeof data.pricing === "string") {
-      data.pricing = JSON.parse(data.pricing);
-    }
-
-    // Convert images to full URLs
-    if (Array.isArray(data.images)) {
-      data.images = data.images.map(img => {
-        if (img.startsWith("http")) return img;
-        return `${BASE_URL}/${img}`;
-      });
-    }
-
-    // Expand pricing with payment name
-    const paymentMethods = await PaymentMethod.findAll({
-      where: { status: "active" },
-    });
-
-    const paymentMap = {};
-    paymentMethods.forEach(pm => {
-      paymentMap[pm.id] = pm.name;
-    });
-
-    if (Array.isArray(data.pricing)) {
-      data.pricing = data.pricing.map(p => ({
-        paymentMethodId: p.paymentMethodId,
-        name: paymentMap[p.paymentMethodId] || null,
-        value: p.value,
-      }));
-    }
-
-    res.json(data);
+        return res.json({ message: "Post updated successfully" });
 
   } catch (error) {
-    res.status(500).json({
-      message: "Error updating post",
-      error: error.message,
-    });
+    return res.status(500).json({ message: "Error updating post", error: error.message });
   }
 };
 
@@ -786,6 +759,3 @@ exports.incrementPostView = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
-
-
-

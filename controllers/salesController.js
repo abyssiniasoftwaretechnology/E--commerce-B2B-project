@@ -7,7 +7,7 @@ exports.createSale = async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
-    const { orderId, customerId, itemId, price, totalPrice } = req.body;
+    const { orderId, customerId, itemId, price, totalPrice, quantity } = req.body;
 
     if (!price || !totalPrice) {
       return res.status(400).json({
@@ -20,6 +20,7 @@ exports.createSale = async (req, res) => {
         orderId: orderId ?? null,
         itemId: itemId ?? null,
         customerId: customerId ?? null,
+        quantity: quantity ?? 1,
         price,
         totalPrice,
         paidAmount: req.body.paidAmount ?? 0,
@@ -63,7 +64,6 @@ exports.createSale = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
-
 
 exports.getAllSales = async (req, res) => {
   try {
@@ -161,7 +161,7 @@ exports.updateSale = async (req, res) => {
     const sale = await Sales.findByPk(id);
     if (!sale) return res.status(404).json({ message: "Sale not found" });
 
-    const { orderId, customerId, price, totalPrice, paidAmount,  } = req.body;
+    const { orderId, customerId, price, totalPrice, paidAmount, quantity } = req.body;
 
     await sale.update({
       orderId: orderId ?? sale.orderId,
@@ -169,6 +169,7 @@ exports.updateSale = async (req, res) => {
       price: price ?? sale.price,
       totalPrice: totalPrice ?? sale.totalPrice,
       paidAmount: paidAmount ?? sale.paidAmount,
+      quantity: quantity ?? sale.quantity,
       // status: status ?? sale.status,
       // paymentStatus: paymentStatus ?? sale.paymentStatus,
       // deliveryStatus: deliveryStatus ?? sale.deliveryStatus,
@@ -184,7 +185,7 @@ exports.updateSale = async (req, res) => {
 exports.updateSaleStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, itemId, quantity } = req.body;
 
     if (!["pending", "sold", "cancelled"].includes(status)) {
       return res.status(400).json({ message: "Invalid status value" });
@@ -198,28 +199,51 @@ exports.updateSaleStatus = async (req, res) => {
 
     if (!sale) return res.status(404).json({ message: "Sale not found" });
 
-    // Only adjust Item quantity if status becomes "sold"
-    if (status === "sold" && sale.status !== "sold") {
-      const order = sale.Order;
-      if (!order) return res.status(400).json({ message: "Order not found" });
+  if (status === "sold" && sale.status !== "sold") {
 
-      const post = order.Post;
-      if (!post || !post.Item) return res.status(404).json({ message: "Item not found" });
+  let item;
+  let deductQty;
 
-      const item = post.Item;
+  // If sale came from Order
+  if (sale.Order) {
+    const order = sale.Order;
+    const post = order.Post;
 
-      if (item.quantity < order.quantity) {
-        return res.status(400).json({ message: "Not enough item quantity in stock" });
-      }
-
-      item.quantity -= order.quantity;
-      await item.save();
+    if (!post || !post.Item) {
+      return res.status(404).json({ message: "Item not found via order" });
     }
+
+    item = post.Item;
+    deductQty = order.quantity;
+  }
+
+  // If sale is direct (like your example record)
+  else if (sale.itemId) {
+    item = await Item.findByPk(sale.itemId);
+    if (!item) {
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    deductQty = sale.quantity;
+  }
+
+  else {
+    return res.status(400).json({ message: "No Item associated with this sale" });
+  }
+
+  if (item.quantity < deductQty) {
+    return res.status(400).json({ message: "Not enough stock" });
+  }
+
+  item.quantity -= deductQty;
+  await item.save();
+}
 
     sale.status = status;
     await sale.save();
 
     return res.status(200).json({ message: "Sale status updated", status: sale.status });
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Failed to update sale status" });

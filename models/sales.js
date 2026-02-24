@@ -31,6 +31,11 @@ const Sales = sequelize.define(
       },
     },
 
+    quantity: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+
     customerId: {
       type: DataTypes.INTEGER,
       allowNull: true,
